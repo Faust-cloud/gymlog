@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="练习记录">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" id="touchIcon">
+<title>练习记录</title>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--card2:#ececf1;--text:#0b0b0f;--sub:#55555f;--line:#cfcfd8;--acc:#0a6cff;--ok:#178a46;--danger:#d92d20;--warn:#a85f00;--cur:#e3eeff;--tab:rgba(250,250,252,.94);color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--card:#17171b;--card2:#26262d;--text:#f5f5f7;--sub:#a8a8b3;--line:#3a3a44;--acc:#3d9bff;--ok:#36c96d;--danger:#ff5a4f;--warn:#ffb340;--cur:#0d2a4d;--tab:rgba(23,23,27,.94)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;-webkit-text-size-adjust:100%}
+body{overscroll-behavior-y:none}
+button,input,select{font:inherit;color:inherit}
+button{touch-action:manipulation;cursor:pointer}
+button:disabled{opacity:.35}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:calc(env(safe-area-inset-top) + 6px) max(16px,env(safe-area-inset-right)) 6px max(16px,env(safe-area-inset-left))}
+h1{font-size:24px;margin:0;font-weight:800}
+h2{font-size:17px;margin:18px 4px 6px}
+main{padding:0 max(12px,env(safe-area-inset-right)) calc(84px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+body.timer-on main{padding-bottom:calc(230px + env(safe-area-inset-bottom))}
+.btn{min-height:44px;min-width:44px;border:0;border-radius:12px;font-size:16px;font-weight:600;background:var(--card2);color:var(--text);padding:0 14px}
+.btn.pri{background:var(--acc);color:#fff}
+.btn.danger{color:var(--danger)}
+.btn.pri.danger,.btn.fill-danger{background:var(--danger);color:#fff}
+.btn.big{display:block;width:100%;min-height:56px;font-size:18px;margin-top:10px}
+.btn.ghost{background:none;color:var(--sub);font-weight:500}
+.card{background:var(--card);border-radius:16px;padding:12px;margin:10px 0}
+.exh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.exn{font-size:19px;font-weight:800}
+.exb{display:flex;gap:4px;flex-shrink:0}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 6px;border-radius:6px;background:var(--card2);color:var(--sub);vertical-align:middle}
+.sub{color:var(--sub);font-size:14px}
+.set{display:grid;grid-template-columns:1fr 66px;gap:6px 8px;padding:8px;border-radius:12px;border:2px solid transparent;margin-top:8px;background:var(--card2)}
+.set.cur{border-color:var(--acc);background:var(--cur)}
+.set.done{opacity:.5}
+.set.done .chk{background:var(--ok);color:#fff}
+.sethead{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-weight:700;padding-left:4px}
+.stp{grid-column:1;display:flex;align-items:center;gap:5px}
+.stp label{width:34px;color:var(--sub);font-size:14px;flex-shrink:0}
+.stp input{flex:1;min-width:0;height:44px;font-size:20px;font-weight:700;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0 2px}
+.stp .btn{padding:0;width:50px;min-width:50px;font-size:15px;background:var(--card)}
+.unit{width:20px;color:var(--sub);font-size:13px;flex-shrink:0}
+.chk{grid-column:2;grid-row:2/4;min-height:94px;font-size:16px;line-height:1.3;background:var(--card);border:2px solid var(--ok)!important;color:var(--ok)}
+input.bad{border-color:var(--danger)!important;box-shadow:0 0 0 2px var(--danger)}
+.addset{width:100%;margin-top:8px;border:1px dashed var(--line);background:none}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:var(--tab);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.tabs button{flex:1;min-height:58px;background:none;border:0;color:var(--sub);font-size:12px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.tabs button.on{color:var(--acc)}
+.tabs svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#timer{display:none;position:fixed;z-index:19;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom));background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px 10px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+body.timer-on #timer{display:block}
+#timer .row{display:flex;gap:6px;align-items:center}
+.tnum{flex:1;font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tlab{font-size:12px;color:var(--sub);font-weight:600}
+.prog{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0}
+.prog i{display:block;height:100%;width:0;background:var(--acc)}
+.chips{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chip{flex-shrink:0;min-height:44px;min-width:56px;border-radius:22px;border:1px solid var(--line);background:var(--card2);font-size:15px;font-weight:600;padding:0 12px}
+.chip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+#timer.alarm{animation:fl .6s steps(2,jump-none) infinite;border-color:transparent}
+#timer.alarm .tlab,#timer.alarm .tnum{color:inherit}
+@keyframes fl{0%{background:var(--danger);color:#fff}100%{background:var(--warn);color:#000}}
+#flash{position:fixed;inset:0;z-index:18;pointer-events:none;opacity:0;background:var(--danger)}
+#flash.go{animation:fl2 .5s ease-in-out 5}
+@keyframes fl2{0%,100%{opacity:0}50%{opacity:.35}}
+.ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.5);display:flex;align-items:flex-end}
+.ov.c{align-items:center;justify-content:center;padding:24px}
+.sheet{background:var(--bg);width:100%;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+.sheet.full{height:100%;max-height:none;border-radius:0;padding-top:env(safe-area-inset-top)}
+.sh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.sh b{font-size:18px}
+.sb{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 12px 24px;flex:1}
+.dlg{background:var(--card);border-radius:18px;padding:20px;width:100%;max-width:360px;max-height:85vh;overflow-y:auto}
+.dlg h3{margin:0 0 8px;font-size:19px}
+.dlg p{margin:0;white-space:pre-line}
+.bts{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.bts .btn{min-height:50px}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);transform:translateX(-50%);z-index:100;background:rgba(30,30,34,.96);color:#fff;padding:12px 16px;border-radius:14px;max-width:90%;font-size:15px;opacity:0;transition:opacity .2s;pointer-events:none;text-align:center}
+#toast.show{opacity:1}
+#toast.err{background:var(--danger)}
+.li{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:54px;padding:10px 12px;background:var(--card);border:0;border-radius:14px;margin:8px 0;font-size:16px;text-align:left}
+.li .t{font-weight:700}
+.tip{background:var(--cur);border-radius:14px;padding:14px;margin:10px 0}
+.tip.warn{background:transparent;border:2px solid var(--warn)}
+.tip ol{margin:8px 0 0;padding-left:22px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.stat{background:var(--card2);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.seg{display:flex;background:var(--card2);border-radius:12px;padding:3px;gap:3px;margin:10px 0}
+.seg button{flex:1;min-height:44px;border:0;background:none;border-radius:10px;font-size:14px;font-weight:600;padding:0 4px}
+.seg button.on{background:var(--card);color:var(--acc);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+select,.txt{width:100%;min-height:48px;font-size:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:0 12px}
+.lbl{display:block;font-weight:700;margin:14px 0 6px}
+.chkrow{display:flex;align-items:center;gap:10px;min-height:48px;font-size:16px}
+.chkrow input{width:24px;height:24px}
+canvas{display:block;width:100%;height:260px;touch-action:manipulation}
+.cinfo{min-height:44px;padding:8px 4px;font-weight:600}
+.row2{display:flex;gap:8px}
+.row2 .btn{flex:1}
+.exline{padding:6px 0;border-bottom:1px solid var(--line)}
+.exline:last-child{border-bottom:0}
+</style>
+</head>
+<body>
+<header class="top"><h1 id="title">训练</h1><div id="hdr" class="sub"></div></header>
+<main id="main"></main>
+<div id="flash"></div>
+<div id="timer">
+  <div class="row">
+    <div class="tnum"><div class="tlab" id="tlab">组间休息</div><span id="tnum">1:30</span></div>
+    <button class="btn" data-a="tadj" data-d="-15">−15秒</button>
+    <button class="btn" data-a="tadj" data-d="15">+15秒</button>
+    <button class="btn pri" data-a="tskip" id="tskip">跳过</button>
+  </div>
+  <div class="prog"><i id="tprog"></i></div>
+  <div class="chips" id="tchips"></div>
+</div>
+<nav class="tabs" id="tabs">
+  <button data-a="tab" data-tab="train"><svg viewBox="0 0 24 24"><path d="M6 6v12M18 6v12M3 9.5v5M21 9.5v5M6 12h12"/></svg>训练</button>
+  <button data-a="tab" data-tab="history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>历史</button>
+  <button data-a="tab" data-tab="progress"><svg viewBox="0 0 24 24"><path d="M4 20h16M5 16l4.5-4.5 3.5 3 6-7"/></svg>进步</button>
+  <button data-a="tab" data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>设置</button>
+</nav>
+<div id="toast"></div>
+<input type="file" id="file" accept="application/json,.json" hidden>
+<script>
+'use strict';
+/* ========== 数据层 ========== */
+const KEY = 'gymlog_v1', VER = 1, DAY = 864e5;
+const CATS = ['胸', '背', '腿', '肩', '手臂', '核心'];
+const BUILTIN = [
+  ['胸','杠铃卧推'],['胸','上斜杠铃卧推'],['胸','哑铃卧推'],['胸','上斜哑铃卧推'],['胸','哑铃飞鸟'],['胸','绳索夹胸'],['胸','双杠臂屈伸'],
+  ['背','引体向上'],['背','高位下拉'],['背','杠铃划船'],['背','坐姿划船'],['背','单臂哑铃划船'],['背','硬拉'],
+  ['腿','杠铃深蹲'],['腿','腿举'],['腿','罗马尼亚硬拉'],['腿','箭步蹲'],['腿','腿屈伸'],['腿','腿弯举'],['腿','提踵'],
+  ['肩','杠铃推举'],['肩','哑铃推举'],['肩','侧平举'],['肩','面拉'],['肩','反向飞鸟'],
+  ['手臂','杠铃弯举'],['手臂','哑铃弯举'],['手臂','锤式弯举'],['手臂','绳索下压'],['手臂','窄距卧推'],
+  ['核心','卷腹'],['核心','悬垂举腿'],['核心','平板支撑']
+];
+const BW = new Set(['双杠臂屈伸', '引体向上', '卷腹', '悬垂举腿', '平板支撑']);
+const builtins = () => BUILTIN.map(([cat, name], i) => ({ id: 'b' + (i + 1), name, cat, bw: BW.has(name), timed: name === '平板支撑', custom: false }));
+const defState = () => ({ version: VER, exercises: builtins(), workouts: [], active: null, timer: null, settings: { rest: 90, lastBackup: null } });
+
+// 以后升级数据结构时在这里按 version 逐级迁移
+function migrate(d) {
+  if (!d || typeof d !== 'object') throw new Error('数据格式错误');
+  const s = defState();
+  if (Array.isArray(d.exercises)) s.exercises = d.exercises;
+  builtins().forEach(b => { if (!s.exercises.some(e => e.id === b.id)) s.exercises.push(b); });
+  if (Array.isArray(d.workouts)) s.workouts = d.workouts;
+  s.active = d.active || null;
+  s.timer = d.timer || null;
+  s.settings = Object.assign(s.settings, d.settings || {});
+  s.version = VER;
+  return s;
+}
+
+let S, saveWarned = 0;
+function load() {
+  let raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) { setTimeout(() => ask('无法读取本地存储', '浏览器禁止了本地存储（可能是无痕模式）。本次记录无法保存，请换用普通模式打开。'), 300); return defState(); }
+  if (!raw) return defState();
+  try { return migrate(JSON.parse(raw)); }
+  catch (e) {
+    try { localStorage.setItem(KEY + '_corrupt_' + Date.now(), raw); } catch (_) {}
+    setTimeout(() => ask('数据读取失败', '本地数据已损坏，已另存一份原始数据。你可以从备份文件导入恢复。'), 300);
+    return defState();
+  }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+  catch (e) {
+    if (Date.now() - saveWarned > 8000) { saveWarned = Date.now(); ask('保存失败', '存储空间可能已满或被禁用，刚才的修改没有写入本地。\n请先到「设置」导出备份，再清理旧数据。'); }
+    return false;
+  }
+}
+// 事务式保存：失败时回滚内存数据，避免“看起来存了其实没存”
+function tx(fn) { const bak = JSON.stringify(S); fn(); if (!save()) { S = JSON.parse(bak); return false; } return true; }
+
+/* ========== 工具函数 ========== */
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const p2 = n => String(n).padStart(2, '0');
+const num = n => Math.round(n * 100) / 100;
+const exById = id => S.exercises.find(e => e.id === id) || { id, name: '未知动作', cat: '', bw: false, timed: false };
+const fmtMD = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`; };
+const fmtDate = t => { const d = new Date(t); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`; };
+const WK = '日一二三四五六';
+const fmtDT = t => { const d = new Date(t); return `${fmtDate(t)} 周${WK[d.getDay()]} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const fmtDur = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)}小时${m % 60}分` : `${m}分钟`; };
+const fmtClock = ms => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600); return (h ? h + ':' + p2(Math.floor(s / 60) % 60) : Math.floor(s / 60)) + ':' + p2(s % 60); };
+const fmtW = (ex, w) => ex.bw ? (w > 0 ? '自重+' + num(w) : '自重') : String(num(w));
+const fmtSet = (ex, s) => ex.timed ? (s.w > 0 ? '+' + num(s.w) + 'kg ' : '') + s.r + '秒' : fmtW(ex, s.w) + '×' + s.r;
+const fmtKg = v => num(v).toLocaleString('zh-CN') + ' kg';
+function parseW(v) { v = String(v).trim().replace(/,|，/g, '.'); if (!/^\d+(\.\d+)?$/.test(v)) return null; const n = Number(v); return n <= 1000 ? num(n) : null; }
+function parseR(v) { v = String(v).trim(); if (!/^\d+$/.test(v)) return null; const n = Number(v); return n >= 1 && n <= 36000 ? n : null; }
+function stats(w) {
+  let v = 0, n = 0;
+  w.exercises.forEach(e => { const ex = exById(e.exId); e.sets.forEach(s => { if (!s.done) return; n++; if (!ex.timed) v += s.w * s.r; }); });
+  return { v: num(v), n, ex: w.exercises.filter(e => e.sets.some(s => s.done)).length };
+}
+const sortW = () => S.workouts.sort((a, b) => b.start - a.start);
+// 某动作的上次成绩：取 before 之前最近一次有已完成组的训练
+function lastPerf(exId, before, skipId) {
+  for (const w of S.workouts) {
+    if (w.id === skipId || (before && w.start >= before)) continue;
+    const sets = w.exercises.filter(e => e.exId === exId).flatMap(e => e.sets.filter(s => s.done));
+    if (sets.length) return { date: w.start, sets };
+  }
+  return null;
+}
+function usage(exId) {
+  return S.workouts.filter(w => w.exercises.some(e => e.exId === exId)).length + (S.active && S.active.exercises.some(e => e.exId === exId) ? 1 : 0);
+}
+
+/* ========== 提示、对话框、弹出面板 ========== */
+let toastT;
+function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'show' + (err ? ' err' : ''); clearTimeout(toastT); toastT = setTimeout(() => t.className = '', 2600); }
+// buttons: [[文字, 返回值, 样式]]；点遮罩返回 null
+function ask(title, msg, buttons = [['知道了', 'ok', 'pri']], extra = '') {
+  return new Promise(res => {
+    const ov = document.createElement('div'); ov.className = 'ov c';
+    ov.innerHTML = `<div class="dlg" role="dialog"><h3>${esc(title)}</h3><p>${esc(msg)}</p>${extra}<div class="bts">${buttons.map(([t, v, c]) => `<button class="btn ${c || ''}" data-v="${v}">${esc(t)}</button>`).join('')}</div></div>`;
+    const done = v => { ov.remove(); res(v); };
+    ov.addEventListener('click', e => { if (e.target === ov) return done(null); const b = e.target.closest('[data-v]'); if (b) done(b.dataset.v === 'input' ? ov.querySelector('input').value : b.dataset.v); });
+    document.body.appendChild(ov);
+    const inp = ov.querySelector('input'); if (inp) setTimeout(() => inp.focus(), 50);
+  });
+}
+const confirmDanger = (title, msg, ok = '删除') => ask(title, msg, [[ok, 'ok', 'fill-danger'], ['取消', 'no']]).then(v => v === 'ok');
+function sheet(title, right = '', full = false) {
+  const ov = document.createElement('div'); ov.className = 'ov';
+  ov.innerHTML = `<div class="sheet ${full ? 'full' : ''}"><div class="sh"><button class="btn ghost" data-x="close">${full ? '取消' : '关闭'}</button><b>${esc(title)}</b><span>${right || '<span style="width:60px;display:inline-block"></span>'}</span></div><div class="sb"></div></div>`;
+  ov.close = () => ov.remove();
+  ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-x="close"]')) ov.close(); });
+  document.body.appendChild(ov);
+  ov.body = ov.querySelector('.sb');
+  return ov;
+}
+/* ========== 训练页与训练编辑器 ========== */
+let tab = 'train', editW = null, editOv = null;
+const TITLES = { train: '训练', history: '历史', progress: '进步', settings: '设置' };
+
+function rTrain() {
+  const m = $('#main'), w = S.active;
+  if (!w) {
+    let h = '';
+    const lb = S.settings.lastBackup;
+    if (S.workouts.length && (!lb || Date.now() - lb > 14 * DAY))
+      h += `<div class="tip warn">💾 ${lb ? `已经 ${Math.floor((Date.now() - lb) / DAY)} 天没有备份了` : '你还没有备份过数据'}。数据只存在这台手机的浏览器里，建议定期导出备份。<button class="btn" style="margin-top:8px" data-a="tab" data-tab="settings">去备份</button></div>`;
+    if (!S.workouts.length)
+      h += `<div class="tip"><b>👋 欢迎！三步开始记录：</b><ol><li>点下面的「开始训练」</li><li>点「＋ 添加动作」，选部位再选动作，逐组填重量和次数</li><li>每做完一组点「完成 ✓」，会自动开始组间休息倒计时</li></ol><div class="sub" style="margin-top:8px">练完点「结束训练」查看总结。建议先在 Safari 分享菜单里「添加到主屏幕」，以后都从主屏幕图标打开。</div></div>`;
+    h += `<button class="btn pri big" data-a="start">开始训练</button>`;
+    const last = S.workouts[0];
+    if (last) { const st = stats(last); h += `<h2>上次训练</h2><button class="li" data-a="hOpen" data-id="${last.id}"><div><div class="t">${fmtDT(last.start)}</div><div class="sub">${esc(last.exercises.map(e => exById(e.exId).name).join('、'))}</div><div class="sub">${st.n} 组 · ${fmtKg(st.v)}</div></div><span class="sub">›</span></button>`; }
+    m.innerHTML = h; $('#hdr').textContent = ''; return;
+  }
+  m.innerHTML = editorHTML(w, 'a') +
+    `<button class="btn big" data-a="addEx" data-m="a">＋ 添加动作</button>
+     <div class="row2" style="margin-top:10px"><button class="btn danger" data-a="restPick">休息 ${S.settings.rest} 秒 ▾</button><button class="btn pri" data-a="finish">结束训练</button></div>`;
+  updElapsed();
+}
+function updElapsed() { const h = $('#hdr'); if (tab === 'train' && S.active) h.textContent = '已训练 ' + fmtClock(Date.now() - S.active.start); }
+
+function editorHTML(w, m) {
+  if (!w.exercises.length) return `<div class="tip" data-m="${m}">还没有动作，点「＋ 添加动作」开始。</div>`;
+  return w.exercises.map((e, ei) => {
+    const ex = exById(e.exId), lp = lastPerf(e.exId, m === 'e' ? w.start : 0, w.id);
+    const cur = m === 'a' ? e.sets.findIndex(s => !s.done) : -1;
+    return `<div class="card" data-m="${m}" data-ei="${ei}">
+      <div class="exh"><div><div class="exn">${esc(ex.name)}${ex.bw ? ' <span class="tag">自重</span>' : ''}${ex.timed ? ' <span class="tag">计时</span>' : ''}</div>
+      <div class="sub">${lp ? '上次 ' + fmtMD(lp.date) + '：' + esc(lp.sets.map(s => fmtSet(ex, s)).join('，')) : '暂无历史记录'}</div></div>
+      <div class="exb"><button class="btn" data-a="mv" data-d="-1" ${ei === 0 ? 'disabled' : ''} aria-label="上移">↑</button><button class="btn" data-a="mv" data-d="1" ${ei === w.exercises.length - 1 ? 'disabled' : ''} aria-label="下移">↓</button><button class="btn danger" data-a="delEx" aria-label="删除动作">✕</button></div></div>
+      ${e.sets.map((s, si) => setHTML(ex, s, si, si === cur)).join('')}
+      <button class="btn addset" data-a="addSet">＋ 添加一组</button></div>`;
+  }).join('');
+}
+function setHTML(ex, s, si, cur) {
+  const rd = ex.timed ? 5 : 1;
+  return `<div class="set ${s.done ? 'done' : ''} ${cur ? 'cur' : ''}" data-si="${si}">
+    <div class="sethead"><span>第 ${si + 1} 组${ex.bw && !s.w ? ' · 自重' : ''}${cur ? ' · 进行中' : ''}</span><button class="btn ghost" data-a="delSet">删除</button></div>
+    <div class="stp"><label>${ex.bw ? '负重' : '重量'}</label><button class="btn" data-a="step" data-f="w" data-d="-2.5">−2.5</button><input data-f="w" inputmode="decimal" autocomplete="off" value="${num(s.w)}" aria-label="重量"><button class="btn" data-a="step" data-f="w" data-d="2.5">+2.5</button><span class="unit">kg</span></div>
+    <div class="stp"><label>${ex.timed ? '秒数' : '次数'}</label><button class="btn" data-a="step" data-f="r" data-d="-${rd}">−${rd}</button><input data-f="r" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${s.r}" aria-label="次数"><button class="btn" data-a="step" data-f="r" data-d="${rd}">+${rd}</button><span class="unit">${ex.timed ? '秒' : '次'}</span></div>
+    <button class="btn chk" data-a="done">${s.done ? '✓<br>已完成' : '完成<br>✓'}</button></div>`;
+}
+// 根据点击位置找到对应的训练、动作、组
+function ctx(el) {
+  const m = el.closest('[data-m]').dataset.m, w = m === 'e' ? editW : S.active;
+  const ce = el.closest('[data-ei]'), cs = el.closest('[data-si]');
+  const ei = ce ? +ce.dataset.ei : -1, si = cs ? +cs.dataset.si : -1;
+  const e = w && ei >= 0 ? w.exercises[ei] : null;
+  return { m, w, ei, si, e, s: e && si >= 0 ? e.sets[si] : null };
+}
+function commit(m) { if (m === 'a') { save(); if (tab === 'train') rTrain(); } else rEdit(); }
+const renum = e => e.sets.forEach((s, i) => s.n = i + 1);
+function firstSet(ex, lp, done) {
+  const f = lp && lp.sets[0];
+  return { n: 1, w: f ? f.w : 0, r: f ? f.r : (ex.timed ? 30 : 10), done };
+}
+
+const A = {}; // 所有点击动作
+A.tab = b => { tab = b.dataset.tab; window.scrollTo(0, 0); render(); };
+A.start = () => { S.active = { id: uid(), start: Date.now(), end: null, exercises: [] }; save(); rTrain(); setTimeout(() => A.addEx($('[data-a="addEx"]')), 50); };
+A.addEx = b => {
+  const m = b.dataset.m;
+  openPicker(ex => {
+    const w = m === 'e' ? editW : S.active;
+    w.exercises.push({ exId: ex.id, sets: [firstSet(ex, lastPerf(ex.id, m === 'e' ? w.start : 0, w.id), m === 'e')] });
+    commit(m);
+    setTimeout(() => { const cards = document.querySelectorAll(`.card[data-m="${m}"]`); cards.length && cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 30);
+  });
+};
+A.mv = b => { const c = ctx(b), j = c.ei + +b.dataset.d; if (j < 0 || j >= c.w.exercises.length) return; const a = c.w.exercises; [a[c.ei], a[j]] = [a[j], a[c.ei]]; commit(c.m); };
+A.delEx = async b => { const c = ctx(b); if (await confirmDanger('删除动作', `删除「${exById(c.e.exId).name}」及其 ${c.e.sets.length} 组记录？`)) { c.w.exercises.splice(c.ei, 1); commit(c.m); } };
+A.addSet = b => { const c = ctx(b), l = c.e.sets[c.e.sets.length - 1], ex = exById(c.e.exId);
+  c.e.sets.push(l ? { n: c.e.sets.length + 1, w: l.w, r: l.r, done: c.m === 'e' } : firstSet(ex, null, c.m === 'e')); commit(c.m); };
+A.delSet = async b => { const c = ctx(b); if (await confirmDanger('删除这一组', `删除第 ${c.si + 1} 组（${fmtSet(exById(c.e.exId), c.s)}）？`)) { c.e.sets.splice(c.si, 1); renum(c.e); commit(c.m); } };
+A.step = b => { const c = ctx(b), d = +b.dataset.d;
+  if (b.dataset.f === 'w') c.s.w = Math.max(0, num(c.s.w + d)); else c.s.r = Math.max(1, c.s.r + d);
+  commit(c.m); };
+A.done = b => {
+  const c = ctx(b), card = b.closest('.set');
+  for (const inp of card.querySelectorAll('input')) if (!applyInput(inp, true)) return;
+  c.s.done = !c.s.done;
+  if (c.s.done && c.m === 'a') startTimer(S.settings.rest);
+  commit(c.m);
+};
+// 输入框：合法则写入；不合法则标红，失焦时恢复原值并提示
+function applyInput(inp, strict) {
+  const c = ctx(inp), f = inp.dataset.f, v = f === 'w' ? parseW(inp.value) : parseR(inp.value);
+  if (v === null) {
+    inp.classList.add('bad');
+    if (strict) { toast(f === 'w' ? '重量需为 0 或正数，可带小数，如 62.5' : '次数需为正整数，如 8', true); inp.value = f === 'w' ? num(c.s.w) : c.s.r; setTimeout(() => inp.classList.remove('bad'), 1500); }
+    return false;
+  }
+  inp.classList.remove('bad'); c.s[f] = v; if (c.m === 'a') save();
+  return true;
+}
+document.addEventListener('input', e => { if (e.target.matches('input[data-f]')) applyInput(e.target, false); });
+// 失焦时只校验不重绘：重绘会吞掉紧接着的按钮点击（例如改完重量直接点“完成”）
+document.addEventListener('change', e => { if (e.target.matches('input[data-f]')) applyInput(e.target, true); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[data-f]')) e.target.blur(); });
+document.addEventListener('focusin', e => { if (e.target.matches('input[data-f]')) setTimeout(() => e.target.select(), 30); });
+
+A.finish = async () => {
+  const w = S.active, all = w.exercises.flatMap(e => e.sets), undone = all.filter(s => !s.done).length;
+  if (!all.length) {
+    if (await ask('结束训练', '本次训练还没有记录任何组。', [['放弃这次训练', 'x', 'fill-danger'], ['继续训练', 'c']]) === 'x') { S.active = null; S.timer = null; save(); render(); }
+    return;
+  }
+  let mode = 'done';
+  if (undone) { mode = await ask('结束训练', `还有 ${undone} 组没点「完成」。`, [['把它们也算作已完成', 'all', 'pri'], ['只保存已完成的组', 'done'], ['返回继续训练', 'c']]); if (!mode || mode === 'c') return; }
+  else if (await ask('结束训练', '确定结束并保存本次训练？', [['结束并保存', 'ok', 'pri'], ['取消', 'c']]) !== 'ok') return;
+  const saved = JSON.parse(JSON.stringify(w));
+  saved.exercises.forEach(e => { if (mode === 'all') e.sets.forEach(s => s.done = true); else e.sets = e.sets.filter(s => s.done); renum(e); });
+  saved.exercises = saved.exercises.filter(e => e.sets.length);
+  if (!saved.exercises.length) {
+    if (await ask('没有已完成的组', '要放弃这次训练吗？', [['放弃这次训练', 'x', 'fill-danger'], ['继续训练', 'c']]) === 'x') { S.active = null; S.timer = null; save(); render(); }
+    return;
+  }
+  saved.end = Date.now();
+  if (!tx(() => { S.workouts.push(saved); sortW(); S.active = null; S.timer = null; })) return;
+  alarmOff(); render(); showSummary(saved);
+};
+function showSummary(w) {
+  const st = stats(w), ov = sheet('训练完成 🎉');
+  ov.body.innerHTML = `<div class="stats"><div class="stat"><span class="sub">训练时长</span><b>${fmtDur(w.end - w.start)}</b></div><div class="stat"><span class="sub">动作数</span><b>${st.ex}</b></div><div class="stat"><span class="sub">总组数</span><b>${st.n}</b></div><div class="stat"><span class="sub">总容量</span><b>${fmtKg(st.v)}</b></div></div>` +
+    detailHTML(w) + `<button class="btn pri big" data-x="close">好的</button>`;
+}
+function detailHTML(w) {
+  return `<div class="card">${w.exercises.map(e => { const ex = exById(e.exId); return `<div class="exline"><b>${esc(ex.name)}</b>${ex.deleted ? ' <span class="tag">已从动作库删除</span>' : ''}<div class="sub">${e.sets.map((s, i) => `${i + 1}. ${fmtSet(ex, s)}`).join('　')}</div></div>`; }).join('')}</div>`;
+}
+A.restPick = () => openRestPicker();
+
+/* ========== 动作库：选择 / 管理 ========== */
+function openPicker(onPick, manage) {
+  let cat = '全部', q = '';
+  const ov = sheet(manage ? '动作库' : '添加动作', '<button class="btn" data-x="new">＋ 新建</button>');
+  ov.body.innerHTML = `<input class="txt" type="search" placeholder="搜索动作" data-x="q" autocomplete="off"><div class="chips" style="margin:10px 0" data-x="cats"></div><div data-x="list"></div>`;
+  const draw = () => {
+    ov.querySelector('[data-x="cats"]').innerHTML = ['全部', ...CATS].map(c => `<button class="chip ${c === cat ? 'on' : ''}" data-cat="${c}">${c}</button>`).join('');
+    const list = S.exercises.filter(e => !e.deleted && (cat === '全部' || e.cat === cat) && (!q || e.name.toLowerCase().includes(q.toLowerCase())));
+    const tags = e => [e.cat, e.bw && '自重', e.timed && '计时(秒)', e.custom && '自定义'].filter(Boolean).join(' · ');
+    ov.querySelector('[data-x="list"]').innerHTML = list.length ? list.map(e => manage
+      ? `<div class="li"><div><div class="t">${esc(e.name)}</div><div class="sub">${tags(e)}</div></div><div class="exb"><button class="btn" data-edit="${e.id}">编辑</button><button class="btn danger" data-del="${e.id}">删除</button></div></div>`
+      : `<button class="li" data-pick="${e.id}"><div><div class="t">${esc(e.name)}</div><div class="sub">${tags(e)}</div></div><span class="sub">＋</span></button>`).join('')
+      : `<div class="tip">没有找到「${esc(q)}」。<button class="btn pri" style="margin-top:8px" data-x="new">新建这个动作</button></div>`;
+  };
+  ov.querySelector('[data-x="q"]').addEventListener('input', e => { q = e.target.value.trim(); draw(); });
+  ov.addEventListener('click', async e => {
+    const t = e.target.closest('[data-cat],[data-pick],[data-edit],[data-del],[data-x="new"]'); if (!t) return;
+    if (t.dataset.cat) { cat = t.dataset.cat; draw(); }
+    else if (t.dataset.pick) { ov.close(); onPick(exById(t.dataset.pick)); }
+    else if (t.dataset.edit) exForm(exById(t.dataset.edit), draw);
+    else if (t.dataset.del) { await delExercise(exById(t.dataset.del)); draw(); }
+    else exForm({ name: q, cat: cat === '全部' ? '胸' : cat }, ex => { draw(); if (!manage) { ov.close(); onPick(ex); } });
+  });
+  draw();
+}
+function exForm(ex, cb) {
+  const isNew = !ex.id, ov = sheet(isNew ? '新建动作' : '编辑动作', '<button class="btn pri" data-x="ok">保存</button>');
+  ov.body.innerHTML = `<label class="lbl">名称</label><input class="txt" data-x="name" value="${esc(ex.name || '')}" maxlength="30" autocomplete="off">
+    <label class="lbl">部位</label><select data-x="cat">${CATS.map(c => `<option ${c === ex.cat ? 'selected' : ''}>${c}</option>`).join('')}</select>
+    <label class="chkrow"><input type="checkbox" data-x="bw" ${ex.bw ? 'checked' : ''}>自重动作（重量默认 0，可填负重）</label>
+    <label class="chkrow"><input type="checkbox" data-x="timed" ${ex.timed ? 'checked' : ''}>计时动作（“次数”栏记秒数）</label>`;
+  ov.querySelector('[data-x="ok"]').addEventListener('click', () => {
+    const name = ov.querySelector('[data-x="name"]').value.trim();
+    if (!name) return toast('请填写动作名称', true);
+    if (S.exercises.some(e => !e.deleted && e.id !== ex.id && e.name === name)) return toast('已有同名动作', true);
+    const val = { name, cat: ov.querySelector('[data-x="cat"]').value, bw: ov.querySelector('[data-x="bw"]').checked, timed: ov.querySelector('[data-x="timed"]').checked };
+    let target;
+    if (!tx(() => { if (isNew) { target = { id: 'c' + uid(), ...val, custom: true }; S.exercises.push(target); } else { target = exById(ex.id); Object.assign(target, val); } })) return;
+    ov.close(); toast('已保存'); cb && cb(target); if (!isNew) render();
+  });
+}
+async function delExercise(ex) {
+  const n = usage(ex.id);
+  const msg = n ? `「${ex.name}」已有 ${n} 次训练记录。\n删除后它不会再出现在动作库里，但历史记录和进步曲线会完整保留。` : `确定删除「${ex.name}」？`;
+  if (!await confirmDanger('删除动作', msg)) return;
+  tx(() => { if (n || !ex.custom) exById(ex.id).deleted = true; else S.exercises = S.exercises.filter(e => e.id !== ex.id); });
+}
+/* ========== 组间休息计时器（基于结束时间戳，锁屏/切后台也准确） ========== */
+const PRESETS = [60, 90, 120, 180];
+function startTimer(sec) { const now = Date.now(); S.timer = { start: now, end: now + sec * 1000, alerted: false }; save(); alarmOff(); drawChips(); renderTimer(); }
+function stopTimer() { S.timer = null; save(); alarmOff(); renderTimer(); }
+function setRest(sec) {
+  S.settings.rest = sec;
+  if (S.timer && !S.timer.alerted) S.timer.end = Math.max(Date.now() + 1000, S.timer.start + sec * 1000);
+  save(); drawChips(); renderTimer(); if (tab !== 'progress') render();
+}
+function drawChips() {
+  const r = S.settings.rest, custom = !PRESETS.includes(r);
+  $('#tchips').innerHTML = PRESETS.map(p => `<button class="chip ${p === r ? 'on' : ''}" data-a="rest" data-s="${p}">${p}秒</button>`).join('') + `<button class="chip ${custom ? 'on' : ''}" data-a="restCustom">${custom ? r + '秒' : '自定义'}</button>`;
+}
+function renderTimer() {
+  const t = S.timer, on = !!t;
+  document.body.classList.toggle('timer-on', on);
+  if (!on) return;
+  const rem = t.end - Date.now();
+  if (rem <= 0) {
+    if (rem < -60000) return stopTimer();         // 超时 1 分钟后自动收起
+    $('#tnum').textContent = '休息结束！'; $('#tlab').textContent = '开始下一组';
+    $('#tprog').style.width = '100%'; $('#tskip').textContent = '关闭';
+    if (!t.alerted) { t.alerted = true; save(); alarm(rem > -10000); }
+    else $('#timer').classList.add('alarm');
+  } else {
+    $('#tnum').textContent = fmtClock(rem + 999); $('#tlab').textContent = '组间休息';
+    $('#tprog').style.width = Math.min(100, (1 - rem / (t.end - t.start)) * 100) + '%'; $('#tskip').textContent = '跳过';
+  }
+}
+A.tadj = b => { const t = S.timer; if (!t) return; const now = Date.now();
+  if (t.end < now) t.end = now;
+  t.end = Math.max(now, t.end + +b.dataset.d * 1000);
+  if (t.end > now) { t.alerted = false; alarmOff(); }
+  save(); renderTimer(); };
+A.tskip = () => stopTimer();
+A.rest = b => setRest(+b.dataset.s);
+A.restCustom = async () => {
+  const v = await ask('自定义休息时长', '输入秒数（10–900）', [['确定', 'input', 'pri'], ['取消', 'no']], `<input class="txt" style="margin-top:12px" inputmode="numeric" pattern="[0-9]*" value="${S.settings.rest}">`);
+  if (v === null || v === 'no') return;
+  const n = parseR(v); if (!n || n < 10 || n > 900) return toast('请输入 10 到 900 之间的整数', true);
+  setRest(n);
+};
+function openRestPicker() {
+  ask('组间休息时长', `当前 ${S.settings.rest} 秒，完成一组后自动开始倒计时。`, [...PRESETS.map(p => [p + ' 秒', p, p === S.settings.rest ? 'pri' : '']), ['自定义…', 'c'], ['取消', 'no']])
+    .then(v => { if (v === 'c') A.restCustom(); else if (v && v !== 'no') setRest(+v); });
+}
+
+// Web Audio：iOS 必须在用户手势里先解锁一次
+let AC = null;
+function unlockAudio() {
+  try {
+    if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; AC = new C(); }
+    if (AC.state !== 'running') { AC.resume(); const b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(0); }
+  } catch (e) {}
+}
+['touchend', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true, capture: true }));
+function beep() {
+  if (!AC) return;
+  try {
+    AC.resume(); const t0 = AC.currentTime + 0.05;
+    [0, .3, .6, 1.2, 1.5, 1.8].forEach((d, i) => {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = 'square'; o.frequency.value = i % 3 === 2 ? 1320 : 880;
+      g.gain.setValueAtTime(0.0001, t0 + d); g.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.25);
+      o.connect(g); g.connect(AC.destination); o.start(t0 + d); o.stop(t0 + d + 0.27);
+    });
+  } catch (e) {}
+}
+function alarm(sound) {
+  $('#timer').classList.add('alarm');
+  const f = $('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  if (sound) beep();
+}
+function alarmOff() { $('#timer').classList.remove('alarm'); $('#flash').classList.remove('go'); }
+
+/* ========== 历史记录 ========== */
+function rHist() {
+  const m = $('#main');
+  if (!S.workouts.length) { m.innerHTML = `<div class="tip">还没有训练记录。完成一次训练后，会按日期显示在这里。</div><button class="btn pri big" data-a="tab" data-tab="train">去训练</button>`; return; }
+  let h = '', month = '';
+  S.workouts.forEach(w => {
+    const d = new Date(w.start), mk = `${d.getFullYear()}年${d.getMonth() + 1}月`, st = stats(w);
+    if (mk !== month) { month = mk; h += `<h2>${mk}</h2>`; }
+    h += `<button class="li" data-a="hOpen" data-id="${w.id}"><div><div class="t">${fmtDT(w.start)}</div><div class="sub">${esc(w.exercises.map(e => exById(e.exId).name).join('、'))}</div><div class="sub">${st.n} 组 · ${fmtKg(st.v)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}</div></div><span class="sub">›</span></button>`;
+  });
+  m.innerHTML = h; $('#hdr').textContent = `共 ${S.workouts.length} 次`;
+}
+A.hOpen = b => {
+  const w = S.workouts.find(x => x.id === b.dataset.id); if (!w) return;
+  const st = stats(w), ov = sheet(fmtDate(w.start));
+  ov.body.innerHTML = `<div class="sub">${fmtDT(w.start)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}</div>
+    <div class="stats"><div class="stat"><span class="sub">动作数</span><b>${st.ex}</b></div><div class="stat"><span class="sub">总组数</span><b>${st.n}</b></div><div class="stat" style="grid-column:1/-1"><span class="sub">总容量</span><b>${fmtKg(st.v)}</b></div></div>
+    ${detailHTML(w)}<div class="row2"><button class="btn" data-x="edit">编辑</button><button class="btn danger" data-x="del">删除这次训练</button></div>`;
+  ov.addEventListener('click', async e => {
+    if (e.target.closest('[data-x="edit"]')) { ov.close(); openEdit(w); }
+    if (e.target.closest('[data-x="del"]') && await confirmDanger('删除训练', `确定删除 ${fmtDT(w.start)} 的训练？\n删除后无法恢复。`)) {
+      if (tx(() => { S.workouts = S.workouts.filter(x => x.id !== w.id); })) { ov.close(); toast('已删除'); render(); }
+    }
+  });
+};
+const toLocalInput = t => { const d = new Date(t); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+function openEdit(w) {
+  editW = JSON.parse(JSON.stringify(w));
+  editOv = sheet('编辑训练', '<button class="btn pri" data-x="save">保存</button>', true);
+  const orig = editOv.close;
+  editOv.close = async () => { if (JSON.stringify(editW) === JSON.stringify(w) || await confirmDanger('放弃修改', '修改还没保存，确定放弃？', '放弃修改')) { orig(); editW = null; editOv = null; } };
+  editOv.querySelector('[data-x="save"]').addEventListener('click', () => {
+    const sets = editW.exercises.flatMap(e => e.sets);
+    if (document.querySelector('.sheet input.bad')) return toast('有不合法的数字，请先修正', true);
+    if (!sets.length) return toast('至少保留一组；要删除整次训练请在详情里删除', true);
+    editW.exercises = editW.exercises.filter(e => e.sets.length); editW.exercises.forEach(renum);
+    const ok = tx(() => { const i = S.workouts.findIndex(x => x.id === w.id); S.workouts[i] = editW; sortW(); });
+    if (ok) { orig(); editW = null; editOv = null; toast('已保存'); render(); }
+  });
+  rEdit();
+}
+function rEdit() {
+  if (!editOv) return;
+  const y = editOv.body.scrollTop;
+  editOv.body.innerHTML = `<label class="lbl">开始时间</label><input class="txt" type="datetime-local" data-x="dt" value="${toLocalInput(editW.start)}">
+    <div class="sub" style="margin-top:6px">编辑模式下新加的组默认算作已完成，可点按钮切换。</div>` +
+    editorHTML(editW, 'e') + `<button class="btn big" data-a="addEx" data-m="e">＋ 添加动作</button>`;
+  editOv.body.querySelector('[data-x="dt"]').addEventListener('change', e => {
+    const t = new Date(e.target.value).getTime(); if (!t) return toast('日期无效', true);
+    const dur = editW.end ? editW.end - editW.start : 0; editW.start = t; if (editW.end) editW.end = t + dur;
+  });
+  editOv.body.scrollTop = y;
+}
+/* ========== 进步曲线 ========== */
+const METRICS = {
+  max: ['最大重量', 'kg', s => Math.max(...s.map(x => x.w))],
+  e1rm: ['估算 1RM', 'kg', s => Math.max(...s.map(x => x.w * (1 + x.r / 30)))],
+  vol: ['总容量', 'kg', s => s.reduce((a, x) => a + x.w * x.r, 0)],
+  reps: ['单组最多', '次', s => Math.max(...s.map(x => x.r))],
+  tmax: ['单组最长', '秒', s => Math.max(...s.map(x => x.r))],
+  tsum: ['总时长', '秒', s => s.reduce((a, x) => a + x.r, 0)]
+};
+const metricsFor = ex => ex.timed ? ['tmax', 'tsum'] : ex.bw ? ['max', 'e1rm', 'vol', 'reps'] : ['max', 'e1rm', 'vol'];
+let pEx = null, pMet = 'max', pSel = -1, pPts = [];
+function series(exId, met) {
+  const f = METRICS[met][2], out = [];
+  [...S.workouts].reverse().forEach(w => {
+    const sets = w.exercises.filter(e => e.exId === exId).flatMap(e => e.sets.filter(s => s.done));
+    if (sets.length) out.push({ t: w.start, v: num(f(sets)), sets });
+  });
+  return out;
+}
+function rProg() {
+  const m = $('#main'); $('#hdr').textContent = '';
+  const used = [...new Set(S.workouts.flatMap(w => w.exercises.map(e => e.exId)))].map(exById);
+  if (!used.length) { m.innerHTML = `<div class="tip">📈 完成训练后，这里会显示每个动作的进步曲线：最大重量、估算 1RM 和总容量。</div>`; return; }
+  if (!used.some(e => e.id === pEx)) pEx = used[0].id;
+  const ex = exById(pEx), mets = metricsFor(ex);
+  if (!mets.includes(pMet)) pMet = mets[0];
+  pPts = series(pEx, pMet);
+  if (pSel >= pPts.length) pSel = -1;
+  const opts = CATS.concat('').map(c => { const g = used.filter(e => (e.cat || '') === c || (!c && !CATS.includes(e.cat))); return g.length ? `<optgroup label="${c || '其他'}">${g.map(e => `<option value="${e.id}" ${e.id === pEx ? 'selected' : ''}>${esc(e.name)}${e.deleted ? '（已删除）' : ''}</option>`).join('')}</optgroup>` : ''; }).join('');
+  const [label, unit] = METRICS[pMet];
+  let h = `<select id="pSel" aria-label="选择动作">${opts}</select>
+    <div class="seg">${mets.map(k => `<button class="${k === pMet ? 'on' : ''}" data-a="met" data-k="${k}">${METRICS[k][0]}</button>`).join('')}</div>`;
+  if (pPts.length < 2) {
+    const p = pPts[0];
+    h += `<div class="tip">${p ? `目前只有 1 次记录：${fmtDate(p.t)}，${label} ${p.v} ${unit}。<br>再练一次就能看到趋势啦 💪` : '这个动作还没有已完成的组。'}</div>`;
+  } else {
+    const first = pPts[0].v, last = pPts[pPts.length - 1].v, best = Math.max(...pPts.map(p => p.v)), diff = num(last - first);
+    h += `<div class="card"><canvas id="cv"></canvas><div class="cinfo" id="cinfo">点曲线上的点查看具体数值</div></div>
+      <div class="stats"><div class="stat"><span class="sub">最近一次</span><b>${last} ${unit}</b></div><div class="stat"><span class="sub">最好成绩</span><b>${best} ${unit}</b></div>
+      <div class="stat"><span class="sub">训练次数</span><b>${pPts.length}</b></div><div class="stat"><span class="sub">较第一次</span><b>${diff > 0 ? '+' : ''}${diff} ${unit}</b></div></div>`;
+    if (pMet === 'e1rm') h += `<div class="sub" style="padding:0 4px">估算 1RM = 重量 × (1 + 次数/30)，取当次训练里最高的一组。</div>`;
+  }
+  m.innerHTML = h;
+  $('#pSel').addEventListener('change', e => { pEx = e.target.value; pSel = -1; rProg(); });
+  const cv = $('#cv');
+  if (cv) { drawChart(); cv.addEventListener('click', onChartTap); }
+}
+A.met = b => { pMet = b.dataset.k; pSel = -1; rProg(); };
+function drawChart() {
+  const cv = $('#cv'); if (!cv) return;
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = 260;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cs = getComputedStyle(document.documentElement), col = k => cs.getPropertyValue(k).trim();
+  const L = 46, R = 16, T = 16, B = 30, pts = pPts;
+  const ys = pts.map(p => p.v); let y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const pad = y1 === y0 ? Math.max(1, Math.abs(y1) * 0.1) : (y1 - y0) * 0.15;
+  y0 = Math.max(0, y0 - pad); y1 = y1 + pad;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const X = t => L + (t1 === t0 ? .5 : (t - t0) / (t1 - t0)) * (W - L - R), Y = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  c.font = '12px -apple-system,sans-serif'; c.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4, y = Y(v);
+    c.strokeStyle = col('--line'); c.beginPath(); c.moveTo(L, y); c.lineTo(W - R, y); c.stroke();
+    c.fillStyle = col('--sub'); c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(String(Math.round(v * 10) / 10), L - 6, y);
+  }
+  const n = Math.min(4, pts.length), seen = [];
+  for (let i = 0; i < n; i++) {
+    const p = pts[Math.round(i * (pts.length - 1) / Math.max(1, n - 1))], x = X(p.t);
+    if (seen.some(s => Math.abs(s - x) < 44)) continue; seen.push(x);
+    c.textAlign = x < L + 20 ? 'left' : x > W - R - 20 ? 'right' : 'center'; c.textBaseline = 'top'; c.fillText(fmtMD(p.t), x, H - B + 8);
+  }
+  c.strokeStyle = col('--acc'); c.lineWidth = 2.5; c.lineJoin = 'round'; c.beginPath();
+  pts.forEach((p, i) => i ? c.lineTo(X(p.t), Y(p.v)) : c.moveTo(X(p.t), Y(p.v))); c.stroke();
+  pts.forEach((p, i) => {
+    p.x = X(p.t); p.y = Y(p.v);
+    c.beginPath(); c.arc(p.x, p.y, i === pSel ? 7 : 4, 0, Math.PI * 2);
+    c.fillStyle = i === pSel ? col('--card') : col('--acc'); c.fill();
+    if (i === pSel) { c.lineWidth = 3; c.strokeStyle = col('--acc'); c.stroke(); }
+  });
+}
+function onChartTap(e) {
+  const r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  let bi = -1, bd = 1e9;
+  pPts.forEach((p, i) => { const d = Math.hypot(p.x - x, (p.y - y) * 0.5); if (d < bd) { bd = d; bi = i; } });
+  if (bi < 0 || bd > 60) return;
+  pSel = bi; drawChart();
+  const p = pPts[bi], ex = exById(pEx), [label, unit] = METRICS[pMet];
+  $('#cinfo').innerHTML = `${fmtDate(p.t)}　${label}：<b>${p.v} ${unit}</b><div class="sub">${esc(p.sets.map(s => fmtSet(ex, s)).join('，'))}</div>`;
+}
+window.addEventListener('resize', () => { if (tab === 'progress') drawChart(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (tab === 'progress') drawChart(); });
+
+/* ========== 设置、备份 ========== */
+function rSet() {
+  const lb = S.settings.lastBackup, kb = Math.round(((localStorage.getItem(KEY) || '').length * 2) / 1024);
+  const custom = S.exercises.filter(e => e.custom && !e.deleted).length;
+  $('#main').innerHTML = `
+    <h2>组间休息</h2><div class="card"><div class="chips" style="flex-wrap:wrap">${PRESETS.map(p => `<button class="chip ${p === S.settings.rest ? 'on' : ''}" data-a="rest" data-s="${p}">${p}秒</button>`).join('')}<button class="chip ${PRESETS.includes(S.settings.rest) ? '' : 'on'}" data-a="restCustom">${PRESETS.includes(S.settings.rest) ? '自定义' : S.settings.rest + '秒'}</button></div><div class="sub" style="margin-top:8px">完成一组后自动开始倒计时。提示音会受手机静音开关影响。</div></div>
+    <h2>数据备份</h2><div class="card"><div>上次备份：<b>${lb ? fmtDT(lb) : '从未备份'}</b>${lb ? `（${Math.floor((Date.now() - lb) / DAY)} 天前）` : ''}</div>
+      <div class="sub" style="margin:6px 0 4px">共 ${S.workouts.length} 次训练、${custom} 个自定义动作，占用约 ${kb} KB。</div>
+      <button class="btn pri big" data-a="exp">导出备份</button><button class="btn big" data-a="imp">导入备份文件</button><button class="btn big" data-a="paste">粘贴备份文本导入</button>
+      <div class="sub" style="margin-top:8px">导出时在分享菜单选「存储到文件」，可存到 iCloud 云盘。注意：从主屏幕打开和在 Safari 里打开的数据互不相通。</div></div>
+    <h2>动作库</h2><button class="li" data-a="lib"><div><div class="t">管理动作库</div><div class="sub">添加、编辑、删除动作</div></div><span class="sub">›</span></button>
+    <h2>危险操作</h2><button class="btn danger big" data-a="wipe">清空所有数据</button>
+    <div class="sub" style="text-align:center;margin:18px 0">练习记录 · 数据版本 v${VER} · 数据只保存在本机</div>`;
+  $('#hdr').textContent = '';
+}
+A.lib = () => openPicker(null, true);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
+A.exp = async () => {
+  const now = Date.now(), data = JSON.parse(JSON.stringify(S));
+  data.settings.lastBackup = now; // 备份文件里的“上次备份时间”与导出后的本机数据一致
+  const name = `gymlog-backup-${today()}.json`;
+  const text = JSON.stringify({ app: 'gymlog', key: KEY, version: VER, exportedAt: new Date(now).toISOString(), data }, null, 2);
+  const mark = () => { S.settings.lastBackup = now; save(); render(); };
+  let file = null;
+  try { file = new File([text], name, { type: 'application/json' }); } catch (e) {}
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); mark(); toast('备份已导出'); return; }
+    catch (e) { if (e.name === 'AbortError') return toast('已取消导出'); }
+  }
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  mark(); toast('已生成备份文件：' + name);
+};
+A.imp = () => { const f = $('#file'); f.value = ''; f.click(); };
+function validateBackup(p) {
+  if (!p || p.app !== 'gymlog' || !p.data) return '这不是本应用导出的备份文件';
+  const d = p.data;
+  if (!Array.isArray(d.exercises) || !Array.isArray(d.workouts)) return '备份缺少动作库或训练记录';
+  if (d.exercises.some(e => !e || typeof e.id !== 'string' || typeof e.name !== 'string')) return '动作库数据有误';
+  for (const w of d.workouts.concat(d.active ? [d.active] : [])) {
+    if (!w || typeof w.id !== 'string' || typeof w.start !== 'number' || !Array.isArray(w.exercises)) return '训练记录格式有误';
+    for (const e of w.exercises) {
+      if (!e || typeof e.exId !== 'string' || !Array.isArray(e.sets)) return '动作记录格式有误';
+      for (const s of e.sets) if (!s || typeof s.w !== 'number' || !(s.w >= 0) || !Number.isInteger(s.r) || s.r < 1) return '组数据有误（重量需 ≥0，次数需为正整数）';
+    }
+  }
+  return null;
+}
+$('#file').addEventListener('change', async e => { const f = e.target.files[0]; if (f) importText(await f.text()); });
+A.paste = () => {
+  const ov = sheet('粘贴备份文本', '<button class="btn pri" data-x="go">导入</button>');
+  ov.body.innerHTML = `<div class="sub">把备份的全部文字粘贴到下面。可以在 Mac 上复制，然后在 iPhone 上直接长按粘贴（两台设备需登录同一个 Apple ID）。</div>
+    <textarea class="txt" data-x="t" style="height:50vh;padding:10px;margin-top:8px;font-size:16px" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="长按这里 → 粘贴"></textarea>`;
+  ov.querySelector('[data-x="go"]').addEventListener('click', async () => {
+    const t = ov.querySelector('[data-x="t"]').value.trim();
+    if (!t) return toast('请先粘贴内容', true);
+    if (await importText(t)) ov.close();
+  });
+};
+// 文件导入和粘贴导入共用：解析 → 校验 → 确认覆盖 → 写入（失败则回滚）
+async function importText(txt) {
+  let p;
+  try { p = JSON.parse(txt); } catch (err) { ask('导入失败', '内容无法解析，不是有效的备份（可能没有复制完整）。当前数据未改动。'); return false; }
+  const err = validateBackup(p); if (err) { ask('导入失败', err + '。当前数据未改动。'); return false; }
+  const d = p.data, nc = d.exercises.filter(x => x.custom).length;
+  if (!await confirmDanger('将覆盖当前数据', `备份导出于 ${p.exportedAt ? fmtDT(Date.parse(p.exportedAt)) : '未知时间'}，包含 ${d.workouts.length} 次训练、${nc} 个自定义动作。\n导入会覆盖当前的全部数据，确定继续？`, '覆盖并导入')) return false;
+  const old = S;
+  try { S = migrate(d); } catch (er) { S = old; ask('导入失败', er.message); return false; }
+  if (!save()) { S = old; return false; }
+  alarmOff(); drawChips(); toast('导入成功'); render();
+  return true;
+}
+A.wipe = async () => {
+  if (!await confirmDanger('清空所有数据', '将删除全部训练记录、自定义动作和设置。建议先导出备份。', '继续')) return;
+  if (!await confirmDanger('再次确认', '真的要清空吗？此操作无法撤销。', '永久清空')) return;
+  S = defState(); if (save()) { toast('已清空'); drawChips(); render(); }
+};
+
+/* ========== 总渲染与启动 ========== */
+function render() {
+  $('#title').textContent = TITLES[tab];
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  ({ train: rTrain, history: rHist, progress: rProg, settings: rSet })[tab]();
+  renderTimer();
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b && !b.disabled && A[b.dataset.a]) A[b.dataset.a](b, e); });
+setInterval(() => { if (S.timer) renderTimer(); updElapsed(); }, 250);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (AC) AC.resume().catch(() => {}); renderTimer(); updElapsed(); } });
+window.addEventListener('pageshow', () => { renderTimer(); updElapsed(); });
+// 运行时生成主屏幕图标（PNG data URL，不依赖外部文件）
+(function icon() {
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 180; const g = c.getContext('2d');
+    g.fillStyle = '#0a6cff'; g.fillRect(0, 0, 180, 180);
+    g.strokeStyle = '#fff'; g.lineCap = 'round'; g.lineWidth = 16;
+    [[50, 52, 128], [130, 52, 128], [28, 72, 108], [152, 72, 108]].forEach(([x, a, b]) => { g.beginPath(); g.moveTo(x, a); g.lineTo(x, b); g.stroke(); });
+    g.lineWidth = 12; g.beginPath(); g.moveTo(50, 90); g.lineTo(130, 90); g.stroke();
+    $('#touchIcon').href = c.toDataURL('image/png');
+  } catch (e) {}
+})();
+S = load();
+if (S.active) toast('已恢复进行中的训练');
+drawChips();
+render();
+</script>
+</body>
+</html>
