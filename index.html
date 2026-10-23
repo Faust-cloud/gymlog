@@ -17,15 +17,23 @@
 @media (prefers-color-scheme:dark){:root{--bg:#000;--card:#17171b;--card2:#26262d;--text:#f5f5f7;--sub:#a8a8b3;--line:#3a3a44;--acc:#3d9bff;--ok:#36c96d;--danger:#ff5a4f;--warn:#ffb340;--cur:#0d2a4d;--tab:rgba(23,23,27,.94)}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;-webkit-text-size-adjust:100%}
+html{touch-action:manipulation}
 body{overscroll-behavior-y:none}
-button,input,select{font:inherit;color:inherit}
+body.lock{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
 button{touch-action:manipulation;cursor:pointer}
 button:disabled{opacity:.35}
 header.top{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:calc(env(safe-area-inset-top) + 6px) max(16px,env(safe-area-inset-right)) 6px max(16px,env(safe-area-inset-left))}
 h1{font-size:24px;margin:0;font-weight:800}
 h2{font-size:17px;margin:18px 4px 6px}
-main{padding:0 max(12px,env(safe-area-inset-right)) calc(84px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
-body.timer-on main{padding-bottom:calc(230px + env(safe-area-inset-bottom))}
+main{overflow-x:clip;padding:0 max(12px,env(safe-area-inset-right)) calc(84px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+body.timer-on main{padding-bottom:calc(160px + env(safe-area-inset-bottom))}
+/* 键盘弹出时收起底部固定栏，避免它们浮到键盘上方挡住输入框 */
+body.kb nav.tabs,body.kb #timer{display:none!important}
+body.kb main{padding-bottom:24px}
+#hpill{display:none;margin-left:8px;padding:4px 10px;border-radius:12px;background:var(--acc);color:#fff;font-weight:700;font-variant-numeric:tabular-nums}
+body.timer-on.kb #hpill{display:inline-block}
+.hright{display:flex;align-items:center}
 .btn{min-height:44px;min-width:44px;border:0;border-radius:12px;font-size:16px;font-weight:600;background:var(--card2);color:var(--text);padding:0 14px}
 .btn.pri{background:var(--acc);color:#fff}
 .btn.danger{color:var(--danger)}
@@ -34,18 +42,23 @@ body.timer-on main{padding-bottom:calc(230px + env(safe-area-inset-bottom))}
 .btn.ghost{background:none;color:var(--sub);font-weight:500}
 .card{background:var(--card);border-radius:16px;padding:12px;margin:10px 0}
 .exh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.exh>div:first-child,.li>div:first-child{min-width:0;overflow-wrap:anywhere}
 .exn{font-size:19px;font-weight:800}
 .exb{display:flex;gap:4px;flex-shrink:0}
 .tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 6px;border-radius:6px;background:var(--card2);color:var(--sub);vertical-align:middle}
 .sub{color:var(--sub);font-size:14px}
-.set{display:grid;grid-template-columns:1fr 66px;gap:6px 8px;padding:8px;border-radius:12px;border:2px solid transparent;margin-top:8px;background:var(--card2)}
-.set.cur{border-color:var(--acc);background:var(--cur)}
-.set.done{opacity:.5}
+.set{display:grid;grid-template-columns:minmax(0,1fr) 66px;gap:6px 8px;padding:8px;border-radius:12px;border:2px solid transparent;margin-top:8px;background:var(--card2)}
+.set.cur{border-color:var(--acc);background:var(--cur);scroll-margin:70px 0 170px}
 .set.done .chk{background:var(--ok);color:#fff}
+/* 已完成的组折叠成一行，点一下展开修改 */
+.set.mini{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 0;background:none;border:1px solid var(--line)}
+.mini-main{flex:1;min-width:0;min-height:44px;border:0;background:none;text-align:left;padding:0 10px;color:var(--sub);font-size:15px}
+.mini-main b{color:var(--text);font-size:17px;margin-left:6px}
+.mini-ok{width:48px;min-width:48px;padding:0;background:var(--ok);color:#fff;font-size:18px}
 .sethead{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-weight:700;padding-left:4px}
 .stp{grid-column:1;display:flex;align-items:center;gap:5px}
 .stp label{width:34px;color:var(--sub);font-size:14px;flex-shrink:0}
-.stp input{flex:1;min-width:0;height:44px;font-size:20px;font-weight:700;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0 2px}
+.stp input{flex:1 1 0;width:0;min-width:0;height:44px;font-size:20px;font-weight:700;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0 2px}
 .stp .btn{padding:0;width:50px;min-width:50px;font-size:15px;background:var(--card)}
 .unit{width:20px;color:var(--sub);font-size:13px;flex-shrink:0}
 .chk{grid-column:2;grid-row:2/4;min-height:94px;font-size:16px;line-height:1.3;background:var(--card);border:2px solid var(--ok)!important;color:var(--ok)}
@@ -55,12 +68,14 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;backgrou
 .tabs button{flex:1;min-height:58px;background:none;border:0;color:var(--sub);font-size:12px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .tabs button.on{color:var(--acc)}
 .tabs svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#timer{display:none;position:fixed;z-index:19;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom));background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px 10px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#timer{display:none;position:fixed;z-index:19;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom));background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 6px 0 0;box-shadow:0 4px 16px rgba(0,0,0,.2);overflow:hidden}
 body.timer-on #timer{display:block}
-#timer .row{display:flex;gap:6px;align-items:center}
-.tnum{flex:1;font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-.tlab{font-size:12px;color:var(--sub);font-weight:600}
-.prog{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0}
+#timer .row{display:flex;gap:6px;align-items:center;min-height:58px}
+.tnum{flex:1;min-width:0;border:0;background:none;text-align:left;padding:4px 10px;line-height:1.1}
+.tnum span{display:block;font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tlab{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#timer .row .btn{padding:0 10px;flex-shrink:0}
+.prog{position:absolute;left:0;right:0;top:0;height:4px;background:var(--line)}
 .prog i{display:block;height:100%;width:0;background:var(--acc)}
 .chips{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .chip{flex-shrink:0;min-height:44px;min-width:56px;border-radius:22px;border:1px solid var(--line);background:var(--card2);font-size:15px;font-weight:600;padding:0 12px}
@@ -71,10 +86,13 @@ body.timer-on #timer{display:block}
 #flash{position:fixed;inset:0;z-index:18;pointer-events:none;opacity:0;background:var(--danger)}
 #flash.go{animation:fl2 .5s ease-in-out 5}
 @keyframes fl2{0%,100%{opacity:0}50%{opacity:.35}}
-.ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.5);display:flex;align-items:flex-end}
+/* 弹层跟随“可见视口”定位：键盘弹出时整体上移，不会被键盘挡住 */
+.ov{position:fixed;left:0;right:0;top:var(--vvt,0px);height:var(--vvh,100%);z-index:50;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;overscroll-behavior:contain}
 .ov.c{align-items:center;justify-content:center;padding:24px}
-.sheet{background:var(--bg);width:100%;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+.sheet{background:var(--bg);width:100%;max-height:calc(var(--vvh,100vh) - 36px);border-radius:18px 18px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
 .sheet.full{height:100%;max-height:none;border-radius:0;padding-top:env(safe-area-inset-top)}
+.sb{overscroll-behavior:contain}
+input[type="datetime-local"]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;text-align:left;line-height:46px}
 .sh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
 .sh b{font-size:18px}
 .sb{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 12px 24px;flex:1}
@@ -110,18 +128,17 @@ canvas{display:block;width:100%;height:260px;touch-action:manipulation}
 </style>
 </head>
 <body>
-<header class="top"><h1 id="title">训练</h1><div id="hdr" class="sub"></div></header>
+<header class="top"><h1 id="title">训练</h1><div class="hright"><span id="hdr" class="sub"></span><span id="hpill"></span></div></header>
 <main id="main"></main>
 <div id="flash"></div>
 <div id="timer">
+  <div class="prog"><i id="tprog"></i></div>
   <div class="row">
-    <div class="tnum"><div class="tlab" id="tlab">组间休息</div><span id="tnum">1:30</span></div>
-    <button class="btn" data-a="tadj" data-d="-15">−15秒</button>
-    <button class="btn" data-a="tadj" data-d="15">+15秒</button>
+    <button class="tnum" data-a="restPick"><div class="tlab" id="tlab">组间休息 · 点此改时长</div><span id="tnum">1:30</span></button>
+    <button class="btn" data-a="tadj" data-d="-15" aria-label="减 15 秒">−15</button>
+    <button class="btn" data-a="tadj" data-d="15" aria-label="加 15 秒">+15</button>
     <button class="btn pri" data-a="tskip" id="tskip">跳过</button>
   </div>
-  <div class="prog"><i id="tprog"></i></div>
-  <div class="chips" id="tchips"></div>
 </div>
 <nav class="tabs" id="tabs">
   <button data-a="tab" data-tab="train"><svg viewBox="0 0 24 24"><path d="M6 6v12M18 6v12M3 9.5v5M21 9.5v5M6 12h12"/></svg>训练</button>
@@ -146,7 +163,7 @@ const BUILTIN = [
 ];
 const BW = new Set(['双杠臂屈伸', '引体向上', '卷腹', '悬垂举腿', '平板支撑']);
 const builtins = () => BUILTIN.map(([cat, name], i) => ({ id: 'b' + (i + 1), name, cat, bw: BW.has(name), timed: name === '平板支撑', custom: false }));
-const defState = () => ({ version: VER, exercises: builtins(), workouts: [], active: null, timer: null, settings: { rest: 90, lastBackup: null } });
+const defState = () => ({ version: VER, exercises: builtins(), workouts: [], active: null, timer: null, settings: { rest: 90, lastBackup: null, sound: 'bg' } });
 
 // 以后升级数据结构时在这里按 version 逐级迁移
 function migrate(d) {
@@ -224,14 +241,17 @@ function usage(exId) {
 /* ========== 提示、对话框、弹出面板 ========== */
 let toastT;
 function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'show' + (err ? ' err' : ''); clearTimeout(toastT); toastT = setTimeout(() => t.className = '', 2600); }
+// 弹层打开时锁住背后的页面，关掉最后一个弹层时解锁
+const lockBody = () => document.body.classList.add('lock');
+const unlockBody = () => { if (!document.querySelector('.ov')) document.body.classList.remove('lock'); };
 // buttons: [[文字, 返回值, 样式]]；点遮罩返回 null
 function ask(title, msg, buttons = [['知道了', 'ok', 'pri']], extra = '') {
   return new Promise(res => {
     const ov = document.createElement('div'); ov.className = 'ov c';
-    ov.innerHTML = `<div class="dlg" role="dialog"><h3>${esc(title)}</h3><p>${esc(msg)}</p>${extra}<div class="bts">${buttons.map(([t, v, c]) => `<button class="btn ${c || ''}" data-v="${v}">${esc(t)}</button>`).join('')}</div></div>`;
-    const done = v => { ov.remove(); res(v); };
+    ov.innerHTML = `<div class="dlg" role="dialog"><h3>${esc(title)}</h3>${msg ? `<p>${esc(msg)}</p>` : ''}${extra}<div class="bts">${buttons.map(([t, v, c]) => `<button class="btn ${c || ''}" data-v="${v}">${esc(t)}</button>`).join('')}</div></div>`;
+    const done = v => { ov.remove(); unlockBody(); res(v); };
     ov.addEventListener('click', e => { if (e.target === ov) return done(null); const b = e.target.closest('[data-v]'); if (b) done(b.dataset.v === 'input' ? ov.querySelector('input').value : b.dataset.v); });
-    document.body.appendChild(ov);
+    document.body.appendChild(ov); lockBody();
     const inp = ov.querySelector('input'); if (inp) setTimeout(() => inp.focus(), 50);
   });
 }
@@ -239,9 +259,9 @@ const confirmDanger = (title, msg, ok = '删除') => ask(title, msg, [[ok, 'ok',
 function sheet(title, right = '', full = false) {
   const ov = document.createElement('div'); ov.className = 'ov';
   ov.innerHTML = `<div class="sheet ${full ? 'full' : ''}"><div class="sh"><button class="btn ghost" data-x="close">${full ? '取消' : '关闭'}</button><b>${esc(title)}</b><span>${right || '<span style="width:60px;display:inline-block"></span>'}</span></div><div class="sb"></div></div>`;
-  ov.close = () => ov.remove();
+  ov.close = () => { ov.remove(); unlockBody(); };
   ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-x="close"]')) ov.close(); });
-  document.body.appendChild(ov);
+  document.body.appendChild(ov); lockBody();
   ov.body = ov.querySelector('.sb');
   return ov;
 }
@@ -278,15 +298,20 @@ function editorHTML(w, m) {
     return `<div class="card" data-m="${m}" data-ei="${ei}">
       <div class="exh"><div><div class="exn">${esc(ex.name)}${ex.bw ? ' <span class="tag">自重</span>' : ''}${ex.timed ? ' <span class="tag">计时</span>' : ''}</div>
       <div class="sub">${lp ? '上次 ' + fmtMD(lp.date) + '：' + esc(lp.sets.map(s => fmtSet(ex, s)).join('，')) : '暂无历史记录'}</div></div>
-      <div class="exb"><button class="btn" data-a="mv" data-d="-1" ${ei === 0 ? 'disabled' : ''} aria-label="上移">↑</button><button class="btn" data-a="mv" data-d="1" ${ei === w.exercises.length - 1 ? 'disabled' : ''} aria-label="下移">↓</button><button class="btn danger" data-a="delEx" aria-label="删除动作">✕</button></div></div>
-      ${e.sets.map((s, si) => setHTML(ex, s, si, si === cur)).join('')}
+      <div class="exb"><button class="btn" data-a="exMenu" aria-label="动作操作">⋯</button></div></div>
+      ${e.sets.map((s, si) => setHTML(ex, s, si, si === cur, `${m}-${ei}-${si}`)).join('')}
       <button class="btn addset" data-a="addSet">＋ 添加一组</button></div>`;
   }).join('');
 }
-function setHTML(ex, s, si, cur) {
+let openSet = null; // 当前展开修改的已完成组
+function setHTML(ex, s, si, cur, key) {
   const rd = ex.timed ? 5 : 1;
+  if (s.done && openSet !== key) {
+    const wt = ex.bw ? fmtW(ex, s.w) + (s.w > 0 ? ' kg' : '') : num(s.w) + ' kg';
+    return `<div class="set mini" data-si="${si}"><button class="mini-main" data-a="openSet">第 ${si + 1} 组<b>${wt} × ${s.r} ${ex.timed ? '秒' : '次'}</b></button><button class="btn mini-ok" data-a="done" aria-label="取消完成">✓</button></div>`;
+  }
   return `<div class="set ${s.done ? 'done' : ''} ${cur ? 'cur' : ''}" data-si="${si}">
-    <div class="sethead"><span>第 ${si + 1} 组${ex.bw && !s.w ? ' · 自重' : ''}${cur ? ' · 进行中' : ''}</span><button class="btn ghost" data-a="delSet">删除</button></div>
+    <div class="sethead"><span>第 ${si + 1} 组${ex.bw && !s.w ? ' · 自重' : ''}${cur ? ' · 进行中' : ''}</span><span>${s.done ? '<button class="btn ghost" data-a="openSet">收起</button>' : ''}<button class="btn ghost" data-a="delSet">删除</button></span></div>
     <div class="stp"><label>${ex.bw ? '负重' : '重量'}</label><button class="btn" data-a="step" data-f="w" data-d="-2.5">−2.5</button><input data-f="w" inputmode="decimal" autocomplete="off" value="${num(s.w)}" aria-label="重量"><button class="btn" data-a="step" data-f="w" data-d="2.5">+2.5</button><span class="unit">kg</span></div>
     <div class="stp"><label>${ex.timed ? '秒数' : '次数'}</label><button class="btn" data-a="step" data-f="r" data-d="-${rd}">−${rd}</button><input data-f="r" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${s.r}" aria-label="次数"><button class="btn" data-a="step" data-f="r" data-d="${rd}">+${rd}</button><span class="unit">${ex.timed ? '秒' : '次'}</span></div>
     <button class="btn chk" data-a="done">${s.done ? '✓<br>已完成' : '完成<br>✓'}</button></div>`;
@@ -299,7 +324,17 @@ function ctx(el) {
   const e = w && ei >= 0 ? w.exercises[ei] : null;
   return { m, w, ei, si, e, s: e && si >= 0 ? e.sets[si] : null };
 }
-function commit(m) { if (m === 'a') { save(); if (tab === 'train') rTrain(); } else rEdit(); }
+// 重绘后把被点的动作卡片放回原来的屏幕位置，页面不会突然跳走
+function commit(m, anchor, key) {
+  const scroller = m === 'e' ? editOv && editOv.body : null;
+  const card = anchor && anchor.closest && anchor.closest('.card[data-ei]');
+  const k = key != null ? key : card ? card.dataset.ei : null, top = card ? card.getBoundingClientRect().top : 0;
+  if (m === 'a') { save(); if (tab === 'train') rTrain(); } else rEdit();
+  if (k == null || !card) return;
+  const n = document.querySelector(`.card[data-m="${m}"][data-ei="${k}"]`); if (!n) return;
+  const d = n.getBoundingClientRect().top - top;
+  if (Math.abs(d) > 1) scroller ? scroller.scrollTop += d : window.scrollBy(0, d);
+}
 const renum = e => e.sets.forEach((s, i) => s.n = i + 1);
 function firstSet(ex, lp, done) {
   const f = lp && lp.sets[0];
@@ -318,20 +353,35 @@ A.addEx = b => {
     setTimeout(() => { const cards = document.querySelectorAll(`.card[data-m="${m}"]`); cards.length && cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 30);
   });
 };
-A.mv = b => { const c = ctx(b), j = c.ei + +b.dataset.d; if (j < 0 || j >= c.w.exercises.length) return; const a = c.w.exercises; [a[c.ei], a[j]] = [a[j], a[c.ei]]; commit(c.m); };
-A.delEx = async b => { const c = ctx(b); if (await confirmDanger('删除动作', `删除「${exById(c.e.exId).name}」及其 ${c.e.sets.length} 组记录？`)) { c.w.exercises.splice(c.ei, 1); commit(c.m); } };
+A.exMenu = async b => {
+  const c = ctx(b), n = c.w.exercises.length, name = exById(c.e.exId).name;
+  const opts = [];
+  if (c.ei > 0) opts.push(['上移', 'up']);
+  if (c.ei < n - 1) opts.push(['下移', 'down']);
+  opts.push(['删除这个动作', 'del', 'fill-danger'], ['取消', 'no']);
+  const v = await ask(name, '', opts);
+  const a = c.w.exercises;
+  if (v === 'up' || v === 'down') {
+    const j = c.ei + (v === 'up' ? -1 : 1); [a[c.ei], a[j]] = [a[j], a[c.ei]]; openSet = null; commit(c.m);
+    const moved = document.querySelector(`.card[data-m="${c.m}"][data-ei="${j}"]`); moved && moved.scrollIntoView({ block: 'nearest' });
+  } else if (v === 'del' && await confirmDanger('删除动作', `删除「${name}」及其 ${c.e.sets.length} 组记录？`)) { a.splice(c.ei, 1); openSet = null; commit(c.m); }
+};
 A.addSet = b => { const c = ctx(b), l = c.e.sets[c.e.sets.length - 1], ex = exById(c.e.exId);
-  c.e.sets.push(l ? { n: c.e.sets.length + 1, w: l.w, r: l.r, done: c.m === 'e' } : firstSet(ex, null, c.m === 'e')); commit(c.m); };
-A.delSet = async b => { const c = ctx(b); if (await confirmDanger('删除这一组', `删除第 ${c.si + 1} 组（${fmtSet(exById(c.e.exId), c.s)}）？`)) { c.e.sets.splice(c.si, 1); renum(c.e); commit(c.m); } };
+  c.e.sets.push(l ? { n: c.e.sets.length + 1, w: l.w, r: l.r, done: c.m === 'e' } : firstSet(ex, null, c.m === 'e'));
+  if (c.m === 'e') openSet = `e-${c.ei}-${c.e.sets.length - 1}`;
+  commit(c.m, b); };
+A.delSet = async b => { const c = ctx(b); if (await confirmDanger('删除这一组', `删除第 ${c.si + 1} 组（${fmtSet(exById(c.e.exId), c.s)}）？`)) { c.e.sets.splice(c.si, 1); renum(c.e); openSet = null; commit(c.m, b); } };
 A.step = b => { const c = ctx(b), d = +b.dataset.d;
   if (b.dataset.f === 'w') c.s.w = Math.max(0, num(c.s.w + d)); else c.s.r = Math.max(1, c.s.r + d);
-  commit(c.m); };
+  commit(c.m, b); };
+A.openSet = b => { const c = ctx(b), k = `${c.m}-${c.ei}-${c.si}`; openSet = openSet === k ? null : k; commit(c.m, b); };
 A.done = b => {
   const c = ctx(b), card = b.closest('.set');
   for (const inp of card.querySelectorAll('input')) if (!applyInput(inp, true)) return;
-  c.s.done = !c.s.done;
+  c.s.done = !c.s.done; openSet = null;
   if (c.s.done && c.m === 'a') startTimer(S.settings.rest);
-  commit(c.m);
+  commit(c.m, b);
+  if (c.s.done && c.m === 'a') { const cur = document.querySelector(`.card[data-m="a"][data-ei="${c.ei}"] .set.cur`); cur && cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 };
 // 输入框：合法则写入；不合法则标红，失焦时恢复原值并提示
 function applyInput(inp, strict) {
@@ -349,11 +399,22 @@ document.addEventListener('input', e => { if (e.target.matches('input[data-f]'))
 document.addEventListener('change', e => { if (e.target.matches('input[data-f]')) applyInput(e.target, true); });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[data-f]')) e.target.blur(); });
 document.addEventListener('focusin', e => { if (e.target.matches('input[data-f]')) setTimeout(() => e.target.select(), 30); });
+// 键盘弹出时收起底部固定栏；收起键盘后把 iOS 顶上去的页面拉回原位
+const isField = el => el && el.matches && el.matches('input:not([type=checkbox]):not([type=file]),textarea,select');
+document.addEventListener('focusin', e => { if (isField(e.target)) document.body.classList.add('kb'); });
+document.addEventListener('focusout', () => setTimeout(() => {
+  if (isField(document.activeElement)) return;
+  document.body.classList.remove('kb');
+  if (window.visualViewport && visualViewport.offsetTop > 0) window.scrollTo(window.scrollX, window.scrollY);
+}, 80));
+// 弹层跟随可见区域（键盘弹出时可见区域变小）
+function syncVV() { const v = window.visualViewport; if (!v) return; const r = document.documentElement.style; r.setProperty('--vvt', v.offsetTop + 'px'); r.setProperty('--vvh', v.height + 'px'); }
+if (window.visualViewport) { visualViewport.addEventListener('resize', syncVV); visualViewport.addEventListener('scroll', syncVV); }
 
 A.finish = async () => {
   const w = S.active, all = w.exercises.flatMap(e => e.sets), undone = all.filter(s => !s.done).length;
   if (!all.length) {
-    if (await ask('结束训练', '本次训练还没有记录任何组。', [['放弃这次训练', 'x', 'fill-danger'], ['继续训练', 'c']]) === 'x') { S.active = null; S.timer = null; save(); render(); }
+    if (await ask('结束训练', '本次训练还没有记录任何组。', [['放弃这次训练', 'x', 'fill-danger'], ['继续训练', 'c']]) === 'x') { S.active = null; S.timer = null; save(); restAudio(0); alarmOff(); render(); }
     return;
   }
   let mode = 'done';
@@ -363,12 +424,12 @@ A.finish = async () => {
   saved.exercises.forEach(e => { if (mode === 'all') e.sets.forEach(s => s.done = true); else e.sets = e.sets.filter(s => s.done); renum(e); });
   saved.exercises = saved.exercises.filter(e => e.sets.length);
   if (!saved.exercises.length) {
-    if (await ask('没有已完成的组', '要放弃这次训练吗？', [['放弃这次训练', 'x', 'fill-danger'], ['继续训练', 'c']]) === 'x') { S.active = null; S.timer = null; save(); render(); }
+    if (await ask('没有已完成的组', '要放弃这次训练吗？', [['放弃这次训练', 'x', 'fill-danger'], ['继续训练', 'c']]) === 'x') { S.active = null; S.timer = null; save(); restAudio(0); alarmOff(); render(); }
     return;
   }
   saved.end = Date.now();
   if (!tx(() => { S.workouts.push(saved); sortW(); S.active = null; S.timer = null; })) return;
-  alarmOff(); render(); showSummary(saved);
+  alarmOff(); restAudio(0); render(); showSummary(saved);
 };
 function showSummary(w) {
   const st = stats(w), ov = sheet('训练完成 🎉');
@@ -429,16 +490,12 @@ async function delExercise(ex) {
 }
 /* ========== 组间休息计时器（基于结束时间戳，锁屏/切后台也准确） ========== */
 const PRESETS = [60, 90, 120, 180];
-function startTimer(sec) { const now = Date.now(); S.timer = { start: now, end: now + sec * 1000, alerted: false }; save(); alarmOff(); drawChips(); renderTimer(); }
-function stopTimer() { S.timer = null; save(); alarmOff(); renderTimer(); }
+function startTimer(sec) { const now = Date.now(); S.timer = { start: now, end: now + sec * 1000, alerted: false }; save(); alarmOff(); restAudio(sec); renderTimer(); }
+function stopTimer() { S.timer = null; save(); alarmOff(); restAudio(0); renderTimer(); }
 function setRest(sec) {
   S.settings.rest = sec;
-  if (S.timer && !S.timer.alerted) S.timer.end = Math.max(Date.now() + 1000, S.timer.start + sec * 1000);
-  save(); drawChips(); renderTimer(); if (tab !== 'progress') render();
-}
-function drawChips() {
-  const r = S.settings.rest, custom = !PRESETS.includes(r);
-  $('#tchips').innerHTML = PRESETS.map(p => `<button class="chip ${p === r ? 'on' : ''}" data-a="rest" data-s="${p}">${p}秒</button>`).join('') + `<button class="chip ${custom ? 'on' : ''}" data-a="restCustom">${custom ? r + '秒' : '自定义'}</button>`;
+  if (S.timer && !S.timer.alerted) { S.timer.end = Math.max(Date.now() + 1000, S.timer.start + sec * 1000); restAudio((S.timer.end - Date.now()) / 1000); }
+  save(); renderTimer(); if (tab !== 'progress') render();
 }
 function renderTimer() {
   const t = S.timer, on = !!t;
@@ -447,12 +504,13 @@ function renderTimer() {
   const rem = t.end - Date.now();
   if (rem <= 0) {
     if (rem < -60000) return stopTimer();         // 超时 1 分钟后自动收起
-    $('#tnum').textContent = '休息结束！'; $('#tlab').textContent = '开始下一组';
-    $('#tprog').style.width = '100%'; $('#tskip').textContent = '关闭';
+    $('#tnum').textContent = '时间到！'; $('#tlab').textContent = '开始下一组';
+    $('#tprog').style.width = '100%'; $('#tskip').textContent = '关闭'; $('#hpill').textContent = '时间到';
     if (!t.alerted) { t.alerted = true; save(); alarm(rem > -10000); }
     else $('#timer').classList.add('alarm');
   } else {
-    $('#tnum').textContent = fmtClock(rem + 999); $('#tlab').textContent = '组间休息';
+    const txt = fmtClock(rem + 999);
+    $('#tnum').textContent = txt; $('#tlab').textContent = `组间休息 ${S.settings.rest} 秒 · 点此修改`; $('#hpill').textContent = '休息 ' + txt;
     $('#tprog').style.width = Math.min(100, (1 - rem / (t.end - t.start)) * 100) + '%'; $('#tskip').textContent = '跳过';
   }
 }
@@ -460,6 +518,7 @@ A.tadj = b => { const t = S.timer; if (!t) return; const now = Date.now();
   if (t.end < now) t.end = now;
   t.end = Math.max(now, t.end + +b.dataset.d * 1000);
   if (t.end > now) { t.alerted = false; alarmOff(); }
+  restAudio((t.end - now) / 1000);
   save(); renderTimer(); };
 A.tskip = () => stopTimer();
 A.rest = b => setRest(+b.dataset.s);
@@ -474,9 +533,46 @@ function openRestPicker() {
     .then(v => { if (v === 'c') A.restCustom(); else if (v && v !== 'no') setRest(+v); });
 }
 
-// Web Audio：iOS 必须在用户手势里先解锁一次
+/* 提示音的三种方式（设置里可切换）：
+   bg  ：完成一组时开始播放一段“静音 + 结尾提示音”的音频。它作为媒体播放，锁屏、切到别的 App
+         时也会继续播，并且不受侧边静音开关影响；代价是会暂停你正在放的音乐。
+   mix ：只在打开本工具时用 Web Audio 响一下，不打断音乐；静音开关打开时听不到。
+   off ：不出声，只闪屏。 */
+const soundMode = () => S.settings.sound || 'bg';
+function applyAudioSession() { try { if ('audioSession' in navigator) navigator.audioSession.type = soundMode() === 'mix' ? 'ambient' : 'playback'; } catch (e) {} }
+const BEEPS = [0, .3, .6, 1.2, 1.5, 1.8, 2.6, 2.9, 3.2];
+// 生成 8kHz 8bit 单声道 WAV：前 sec 秒静音，结尾三连响三次
+function makeWav(sec) {
+  const sr = 8000, n = Math.round(sr * (sec + 3.6)), buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true);
+  v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, 'data'); v.setUint32(40, n, true);
+  const d = new Uint8Array(buf, 44); d.fill(128);
+  const s0 = Math.round(sr * sec);
+  BEEPS.forEach((o, k) => {
+    const st = s0 + Math.round(o * sr), len = Math.round(.22 * sr), per = sr / (k % 3 === 2 ? 1320 : 880);
+    for (let i = 0; i < len && st + i < n; i++) d[st + i] = 128 + ((i % per) < per / 2 ? 90 : -90);
+  });
+  return new Blob([buf], { type: 'audio/wav' });
+}
+let RA = null, RAurl = null;
+// 必须在点击里调用（iOS 只允许用户点击触发播放）；sec<=0 表示停止
+function restAudio(sec) {
+  if (RA) { RA.pause(); RA.removeAttribute('src'); RA.load(); }
+  if (RAurl) { URL.revokeObjectURL(RAurl); RAurl = null; }
+  if (sec <= 0 || soundMode() !== 'bg') { if ('mediaSession' in navigator) navigator.mediaSession.metadata = null; return; }
+  if (!RA) { RA = new Audio(); RA.preload = 'auto'; RA.setAttribute('playsinline', ''); }
+  RAurl = URL.createObjectURL(makeWav(Math.min(900, Math.max(1, sec))));
+  RA.src = RAurl;
+  const p = RA.play(); if (p && p.catch) p.catch(() => toast('提示音被系统拦截了，时间到时只会闪屏', true));
+  try { if ('mediaSession' in navigator && window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title: '组间休息 ' + Math.round(sec) + ' 秒', artist: '练习记录' }); } catch (e) {}
+}
+
+// Web Audio（不打断音乐模式用）：iOS 必须在用户手势里先解锁一次
 let AC = null;
 function unlockAudio() {
+  if (soundMode() !== 'mix') return;
   try {
     if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; AC = new C(); }
     if (AC.state !== 'running') { AC.resume(); const b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(0); }
@@ -487,7 +583,7 @@ function beep() {
   if (!AC) return;
   try {
     AC.resume(); const t0 = AC.currentTime + 0.05;
-    [0, .3, .6, 1.2, 1.5, 1.8].forEach((d, i) => {
+    BEEPS.forEach((d, i) => {
       const o = AC.createOscillator(), g = AC.createGain();
       o.type = 'square'; o.frequency.value = i % 3 === 2 ? 1320 : 880;
       g.gain.setValueAtTime(0.0001, t0 + d); g.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.25);
@@ -498,9 +594,16 @@ function beep() {
 function alarm(sound) {
   $('#timer').classList.add('alarm');
   const f = $('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
-  if (sound) beep();
+  if (sound && soundMode() === 'mix') beep();   // bg 模式下提示音已经在音频结尾里
 }
 function alarmOff() { $('#timer').classList.remove('alarm'); $('#flash').classList.remove('go'); }
+A.sound = b => { S.settings.sound = b.dataset.k; save(); applyAudioSession(); if (S.timer) restAudio(soundMode() === 'bg' ? (S.timer.end - Date.now()) / 1000 : 0); rSet(); };
+A.testSound = () => {
+  const m = soundMode();
+  if (m === 'off') return toast('当前是「只闪屏」，不会出声');
+  if (m === 'bg') { if (S.timer) return toast('正在休息计时，等这次结束后再试'); restAudio(5); toast('5 秒后响。现在可以锁屏或切到别的 App 试试'); }
+  else { unlockAudio(); setTimeout(beep, 300); toast('如果静音开关开着，这个模式听不到'); }
+};
 
 /* ========== 历史记录 ========== */
 function rHist() {
@@ -653,7 +756,11 @@ function rSet() {
   const lb = S.settings.lastBackup, kb = Math.round(((localStorage.getItem(KEY) || '').length * 2) / 1024);
   const custom = S.exercises.filter(e => e.custom && !e.deleted).length;
   $('#main').innerHTML = `
-    <h2>组间休息</h2><div class="card"><div class="chips" style="flex-wrap:wrap">${PRESETS.map(p => `<button class="chip ${p === S.settings.rest ? 'on' : ''}" data-a="rest" data-s="${p}">${p}秒</button>`).join('')}<button class="chip ${PRESETS.includes(S.settings.rest) ? '' : 'on'}" data-a="restCustom">${PRESETS.includes(S.settings.rest) ? '自定义' : S.settings.rest + '秒'}</button></div><div class="sub" style="margin-top:8px">完成一组后自动开始倒计时。提示音会受手机静音开关影响。</div></div>
+    <h2>组间休息</h2><div class="card"><div class="chips" style="flex-wrap:wrap">${PRESETS.map(p => `<button class="chip ${p === S.settings.rest ? 'on' : ''}" data-a="rest" data-s="${p}">${p}秒</button>`).join('')}<button class="chip ${PRESETS.includes(S.settings.rest) ? '' : 'on'}" data-a="restCustom">${PRESETS.includes(S.settings.rest) ? '自定义' : S.settings.rest + '秒'}</button></div><div class="sub" style="margin-top:8px">完成一组后自动开始倒计时。</div></div>
+    <h2>休息结束提醒</h2><div class="card">
+      <div class="seg" style="margin-top:0">${[['bg', '锁屏也响'], ['mix', '不打断音乐'], ['off', '只闪屏']].map(([k, t]) => `<button class="${soundMode() === k ? 'on' : ''}" data-a="sound" data-k="${k}">${t}</button>`).join('')}</div>
+      <div class="sub">${{ bg: '锁屏、切到别的 App、开着静音开关都会响。代价：休息期间会暂停你正在放的音乐。', mix: '不会打断音乐，但只有屏幕亮着、停留在本工具时才响；静音开关打开时听不到。', off: '不出声，只在回到本工具时闪屏提醒。' }[soundMode()]}</div>
+      <button class="btn big" data-a="testSound">试听提醒（5 秒后响）</button></div>
     <h2>数据备份</h2><div class="card"><div>上次备份：<b>${lb ? fmtDT(lb) : '从未备份'}</b>${lb ? `（${Math.floor((Date.now() - lb) / DAY)} 天前）` : ''}</div>
       <div class="sub" style="margin:6px 0 4px">共 ${S.workouts.length} 次训练、${custom} 个自定义动作，占用约 ${kb} KB。</div>
       <button class="btn pri big" data-a="exp">导出备份</button><button class="btn big" data-a="imp">导入备份文件</button><button class="btn big" data-a="paste">粘贴备份文本导入</button>
@@ -718,13 +825,13 @@ async function importText(txt) {
   const old = S;
   try { S = migrate(d); } catch (er) { S = old; ask('导入失败', er.message); return false; }
   if (!save()) { S = old; return false; }
-  alarmOff(); drawChips(); toast('导入成功'); render();
+  alarmOff(); restAudio(0); applyAudioSession(); toast("导入成功"); render();
   return true;
 }
 A.wipe = async () => {
   if (!await confirmDanger('清空所有数据', '将删除全部训练记录、自定义动作和设置。建议先导出备份。', '继续')) return;
   if (!await confirmDanger('再次确认', '真的要清空吗？此操作无法撤销。', '永久清空')) return;
-  S = defState(); if (save()) { toast('已清空'); drawChips(); render(); }
+  S = defState(); restAudio(0); alarmOff(); if (save()) { toast('已清空'); render(); }
 };
 
 /* ========== 总渲染与启动 ========== */
@@ -750,8 +857,8 @@ window.addEventListener('pageshow', () => { renderTimer(); updElapsed(); });
   } catch (e) {}
 })();
 S = load();
+applyAudioSession(); syncVV();
 if (S.active) toast('已恢复进行中的训练');
-drawChips();
 render();
 </script>
 </body>
