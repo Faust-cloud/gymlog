@@ -61,12 +61,19 @@ body.timer-on.kb #hpill{display:inline-block}
 .sub{color:var(--sub);font-size:14px}
 .set{display:grid;grid-template-columns:minmax(0,1fr) 66px;gap:6px 8px;padding:8px;border-radius:12px;border:2px solid transparent;margin-top:8px;background:var(--card2)}
 .set.cur{border-color:var(--acc);background:var(--cur);scroll-margin:70px 0 170px}
+/* 热身组：橙色虚线边框，一眼和正式组区分开 */
+.set.warm{border:2px dashed var(--warn)}
+.set.warm .sethead>span:first-child,.set.mini.warm .mini-main{color:var(--warn)}
+.sethead{flex-wrap:wrap;gap:0 4px}
+.warmbtn{padding:0 8px}
 .set.done .chk{background:var(--ok);color:#fff}
 /* 已完成的组折叠成一行，点一下展开修改 */
 .set.mini{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 0;background:none;border:1px solid var(--line)}
 .mini-main{flex:1;min-width:0;min-height:44px;border:0;background:none;text-align:left;padding:0 10px;color:var(--sub);font-size:15px}
 .mini-main b{color:var(--text);font-size:17px;margin-left:6px}
 .mini-ok{width:48px;min-width:48px;padding:0;background:var(--ok);color:#fff;font-size:18px}
+.prev{font-weight:500;color:var(--sub);font-size:13px;margin-left:8px}
+.set.mini.warm{border:1px dashed var(--warn)}
 .sethead{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-weight:700;padding-left:4px}
 .stp{grid-column:1;display:flex;align-items:center;gap:5px}
 .stp label{width:34px;color:var(--sub);font-size:14px;flex-shrink:0}
@@ -245,7 +252,7 @@ function parseW(v) { v = String(v).trim().replace(/,|，/g, '.'); if (!/^\d+(\.\
 function parseR(v) { v = String(v).trim(); if (!/^\d+$/.test(v)) return null; const n = Number(v); return n >= 1 && n <= 36000 ? n : null; }
 function stats(w) {
   let v = 0, n = 0;
-  w.exercises.forEach(e => { const ex = exById(e.exId); e.sets.forEach(s => { if (!s.done) return; n++; if (!ex.timed) v += s.w * s.r; }); });
+  w.exercises.forEach(e => { const ex = exById(e.exId); e.sets.forEach(s => { if (!s.done || s.warm) return; n++; if (!ex.timed) v += s.w * s.r; }); });
   return { v: num(v), n, ex: w.exercises.filter(e => e.sets.some(s => s.done)).length };
 }
 const sortW = () => S.workouts.sort((a, b) => b.start - a.start);
@@ -253,7 +260,7 @@ const sortW = () => S.workouts.sort((a, b) => b.start - a.start);
 function lastPerf(exId, before, skipId) {
   for (const w of S.workouts) {
     if (w.id === skipId || (before && w.start >= before)) continue;
-    const sets = w.exercises.filter(e => e.exId === exId).flatMap(e => e.sets.filter(s => s.done));
+    const sets = w.exercises.filter(e => e.exId === exId).flatMap(e => e.sets.filter(s => s.done && !s.warm));
     if (sets.length) return { date: w.start, sets };
   }
   return null;
@@ -264,7 +271,7 @@ function usage(exId) {
 
 /* ========== 提示、对话框、弹出面板 ========== */
 let toastT;
-function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'show' + (err ? ' err' : ''); clearTimeout(toastT); toastT = setTimeout(() => t.className = '', 2600); }
+function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'show' + (err ? ' err' : ''); clearTimeout(toastT); toastT = setTimeout(() => t.className = '', msg.length > 30 ? 4500 : 2600); }
 // 弹层打开时锁住背后的页面，关掉最后一个弹层时解锁
 const lockBody = () => document.body.classList.add('lock');
 const unlockBody = () => { if (!document.querySelector('.ov')) document.body.classList.remove('lock'); };
@@ -316,26 +323,30 @@ function updElapsed() { const h = $('#hdr'); if (tab === 'train' && S.active) h.
 
 function editorHTML(w, m) {
   if (!w.exercises.length) return `<div class="tip" data-m="${m}">还没有动作，点「＋ 添加动作」开始。</div>`;
+  const prs = prMap(w);
   return w.exercises.map((e, ei) => {
     const ex = exById(e.exId), lp = lastPerf(e.exId, m === 'e' ? w.start : 0, w.id);
-    const cur = m === 'a' ? e.sets.findIndex(s => !s.done) : -1;
+    const cur = m === 'a' ? e.sets.findIndex(s => !s.done) : -1, labs = setLabels(e.sets);
+    let k = 0; const prevs = e.sets.map(s => { if (s.warm) return ''; const p = lp && lp.sets[k++]; return p ? fmtSet(ex, p) : ''; });
     return `<div class="card" data-m="${m}" data-ei="${ei}">
       <div class="exh"><div><div class="exn">${esc(ex.name)}${ex.bw ? ' <span class="tag">自重</span>' : ''}${ex.timed ? ' <span class="tag">计时</span>' : ''}</div>
       <div class="sub">${lp ? '上次 ' + fmtMD(lp.date) + '：' + esc(lp.sets.map(s => fmtSet(ex, s)).join('，')) : '暂无历史记录'}</div></div>
       <div class="exb"><button class="btn" data-a="exMenu" aria-label="动作操作">⋯</button></div></div>
-      ${e.sets.map((s, si) => setHTML(ex, s, si, si === cur, `${m}-${ei}-${si}`)).join('')}
+      ${e.sets.map((s, si) => setHTML(ex, s, si, si === cur, `${m}-${ei}-${si}`, labs[si], prevs[si], prs.has(s))).join('')}
       <button class="btn addset" data-a="addSet">＋ 添加一组</button></div>`;
   }).join('');
 }
+// 热身组不占正式组号：热身、热身、第 1 组、第 2 组…
+const setLabels = sets => { let k = 0; return sets.map(s => s.warm ? '热身' : `第 ${++k} 组`); };
 let openSet = null; // 当前展开修改的已完成组
-function setHTML(ex, s, si, cur, key) {
-  const rd = ex.timed ? 5 : 1;
+function setHTML(ex, s, si, cur, key, lab, prev, pr) {
+  const rd = ex.timed ? 5 : 1, trophy = pr ? ' 🏆' : '';
   if (s.done && openSet !== key) {
     const wt = ex.bw ? fmtW(ex, s.w) + (s.w > 0 ? ' kg' : '') : num(s.w) + ' kg';
-    return `<div class="set mini" data-si="${si}"><button class="mini-main" data-a="openSet">第 ${si + 1} 组<b>${wt} × ${s.r} ${ex.timed ? '秒' : '次'}</b></button><button class="btn mini-ok" data-a="done" aria-label="取消完成">✓</button></div>`;
+    return `<div class="set mini ${s.warm ? 'warm' : ''}" data-si="${si}"><button class="mini-main" data-a="openSet">${lab}<b>${wt} × ${s.r} ${ex.timed ? '秒' : '次'}${trophy}</b></button><button class="btn mini-ok" data-a="done" aria-label="取消完成">✓</button></div>`;
   }
-  return `<div class="set ${s.done ? 'done' : ''} ${cur ? 'cur' : ''}" data-si="${si}">
-    <div class="sethead"><span>第 ${si + 1} 组${ex.bw && !s.w ? ' · 自重' : ''}${cur ? ' · 进行中' : ''}</span><span>${s.done ? '<button class="btn ghost" data-a="openSet">收起</button>' : ''}<button class="btn ghost" data-a="delSet">删除</button></span></div>
+  return `<div class="set ${s.done ? 'done' : ''} ${cur ? 'cur' : ''} ${s.warm ? 'warm' : ''}" data-si="${si}">
+    <div class="sethead"><span>${lab}${ex.bw && !s.w ? ' · 自重' : ''}${cur ? ' · 进行中' : ''}${trophy}${prev ? `<span class="prev">上次 ${esc(prev)}</span>` : ''}</span><span>${s.done ? '<button class="btn ghost" data-a="openSet">收起</button>' : ''}<button class="btn ghost warmbtn" data-a="warm">${s.warm ? '改为正式组' : '标为热身'}</button><button class="btn ghost" data-a="delSet">删除</button></span></div>
     <div class="stp"><label>${ex.bw ? '负重' : '重量'}</label><button class="btn" data-a="step" data-f="w" data-d="-2.5">−2.5</button><input data-f="w" inputmode="decimal" autocomplete="off" value="${num(s.w)}" aria-label="重量"><button class="btn" data-a="step" data-f="w" data-d="2.5">+2.5</button><span class="unit">kg</span></div>
     <div class="stp"><label>${ex.timed ? '秒数' : '次数'}</label><button class="btn" data-a="step" data-f="r" data-d="-${rd}">−${rd}</button><input data-f="r" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${s.r}" aria-label="次数"><button class="btn" data-a="step" data-f="r" data-d="${rd}">+${rd}</button><span class="unit">${ex.timed ? '秒' : '次'}</span></div>
     <button class="btn chk" data-a="done">${s.done ? '✓<br>已完成' : '完成<br>✓'}</button></div>`;
@@ -353,7 +364,7 @@ function commit(m, anchor, key) {
   const scroller = m === 'e' ? editOv && editOv.body : null;
   const card = anchor && anchor.closest && anchor.closest('.card[data-ei]');
   const k = key != null ? key : card ? card.dataset.ei : null, top = card ? card.getBoundingClientRect().top : 0;
-  if (m === 'a') { save(); if (tab === 'train') rTrain(); } else rEdit();
+  if (m === 'a') { touchActive(); save(); if (tab === 'train') rTrain(); } else rEdit();
   if (k == null || !card) return;
   const n = document.querySelector(`.card[data-m="${m}"][data-ei="${k}"]`); if (!n) return;
   const d = n.getBoundingClientRect().top - top;
@@ -368,6 +379,47 @@ function firstSet(ex, lp, done) {
 const A = {}; // 所有点击动作
 A.tab = b => { tab = b.dataset.tab; window.scrollTo(0, 0); render(); };
 A.start = () => { S.active = { id: uid(), start: Date.now(), end: null, exercises: [] }; save(); rTrain(); setTimeout(() => A.addEx($('[data-a="addEx"]')), 50); };
+/* ========== 忘记结束训练：很久没操作就自动结束 ==========
+   超过设定时长（默认 10 分钟）没有任何操作，下次看到这个页面时直接结束这次训练：
+   结束时间按最后一组点“完成”的时间算，没点完成的组不保存；弹窗里可以一键撤销。 */
+const idleMin = () => (S.settings.idleMin === undefined ? 10 : S.settings.idleMin);
+const idleLimit = () => idleMin() ? idleMin() * 60000 : Infinity;
+const touchActive = () => { if (S.active) S.active.last = Date.now(); };
+const lastAct = w => w.last || w.start;
+const lastDone = w => Math.max(0, ...w.exercises.flatMap(e => e.sets.map(s => s.t || 0)));
+// 结束时间：停了很久就用最后一组的完成时间；旧版本记的训练没有时间信息，按每组约 3 分钟估算
+function endTime(w) {
+  const now = Date.now();
+  if (now - lastAct(w) < idleLimit()) return now;
+  const t = lastDone(w) || w.last;
+  if (t) return t;
+  const n = w.exercises.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
+  return Math.min(now, w.start + Math.max(10, n * 3) * 60000);
+}
+const fmtHM = t => { const d = new Date(t); return (new Date().toDateString() === d.toDateString() ? '今天 ' : fmtMD(t) + ' ') + p2(d.getHours()) + ':' + p2(d.getMinutes()); };
+const fmtAgo = ms => { const m = Math.floor(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)} 小时 ${m % 60} 分钟` : `${m} 分钟`; };
+function autoEnd() {
+  const w = S.active;
+  if (!w || document.hidden || document.querySelector('.ov') || document.body.classList.contains('kb')) return;
+  if (S.timer && S.timer.end > Date.now()) return;           // 还在组间休息，不算没动静
+  const idle = Date.now() - lastAct(w);
+  if (idle < idleLimit()) return;
+  const snap = JSON.parse(JSON.stringify(w)), estimated = !lastDone(w) && !w.last;
+  const saved = JSON.parse(JSON.stringify(w));
+  saved.exercises.forEach(e => { e.sets = e.sets.filter(s => s.done); renum(e); });
+  saved.exercises = saved.exercises.filter(e => e.sets.length);
+  saved.end = endTime(w); delete saved.last;
+  const keep = saved.exercises.length > 0;
+  if (!tx(() => { if (keep) { S.workouts.push(saved); sortW(); } S.active = null; S.timer = null; })) return;
+  restAudio(0); alarmOff(); openSet = null; render();
+  const msg = keep
+    ? `已经 ${fmtAgo(idle)}没有操作，这次训练已自动结束并保存。\n结束时间：${fmtHM(saved.end)}${estimated ? '（旧记录没有时间信息，这是按组数估算的，可以到「历史」里改）' : '（最后一组完成的时间）'}\n共 ${fmtDur(saved.end - saved.start)}，${stats(saved).n} 组。没点「完成」的组没有保存。`
+    : `已经 ${fmtAgo(idle)}没有操作，这次训练没有完成任何一组，已自动放弃。`;
+  ask('已自动结束训练', msg, [['好的', 'ok', 'pri'], ['撤销，我还在练', 'undo']]).then(v => {
+    if (v !== 'undo' || S.active) return;
+    if (tx(() => { S.workouts = S.workouts.filter(x => x.id !== snap.id); S.active = snap; S.active.last = Date.now(); })) { tab = 'train'; render(); toast('已恢复，继续训练'); }
+  });
+}
 A.addEx = b => {
   const m = b.dataset.m;
   openPicker(ex => {
@@ -394,17 +446,20 @@ A.addSet = b => { const c = ctx(b), l = c.e.sets[c.e.sets.length - 1], ex = exBy
   c.e.sets.push(l ? { n: c.e.sets.length + 1, w: l.w, r: l.r, done: c.m === 'e' } : firstSet(ex, null, c.m === 'e'));
   if (c.m === 'e') openSet = `e-${c.ei}-${c.e.sets.length - 1}`;
   commit(c.m, b); };
-A.delSet = async b => { const c = ctx(b); if (await confirmDanger('删除这一组', `删除第 ${c.si + 1} 组（${fmtSet(exById(c.e.exId), c.s)}）？`)) { c.e.sets.splice(c.si, 1); renum(c.e); openSet = null; commit(c.m, b); } };
+A.delSet = async b => { const c = ctx(b); if (await confirmDanger('删除这一组', `删除「${setLabels(c.e.sets)[c.si]}」（${fmtSet(exById(c.e.exId), c.s)}）？`)) { c.e.sets.splice(c.si, 1); renum(c.e); openSet = null; commit(c.m, b); } };
 A.step = b => { const c = ctx(b), d = +b.dataset.d;
   if (b.dataset.f === 'w') c.s.w = Math.max(0, num(c.s.w + d)); else c.s.r = Math.max(1, c.s.r + d);
   commit(c.m, b); };
 A.openSet = b => { const c = ctx(b), k = `${c.m}-${c.ei}-${c.si}`; openSet = openSet === k ? null : k; commit(c.m, b); };
+A.warm = b => { const c = ctx(b); if (c.s.warm) delete c.s.warm; else c.s.warm = true; commit(c.m, b); };
 A.done = b => {
   const c = ctx(b), card = b.closest('.set');
   for (const inp of card.querySelectorAll('input')) if (!applyInput(inp, true)) return;
   c.s.done = !c.s.done; openSet = null;
+  if (c.s.done) c.s.t = Date.now(); else delete c.s.t;   // 记下每组完成的时间，用来算训练结束时间
   if (c.s.done && c.m === 'a') startTimer(S.settings.rest);
   commit(c.m, b);
+  if (c.s.done && c.m === 'a') { const t = prMap(S.active).get(c.s); if (t) toast(`🏆 新纪录！${exById(c.e.exId).name} ${t.map(x => `${x[0]} ${x[1]}（之前 ${x[2]}）`).join('，')}`); }
   if (c.s.done && c.m === 'a') { const cur = document.querySelector(`.card[data-m="a"][data-ei="${c.ei}"] .set.cur`); cur && cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 };
 // 输入框：合法则写入；不合法则标红，失焦时恢复原值并提示
@@ -415,7 +470,7 @@ function applyInput(inp, strict) {
     if (strict) { toast(f === 'w' ? '重量需为 0 或正数，可带小数，如 62.5' : '次数需为正整数，如 8', true); inp.value = f === 'w' ? num(c.s.w) : c.s.r; setTimeout(() => inp.classList.remove('bad'), 1500); }
     return false;
   }
-  inp.classList.remove('bad'); c.s[f] = v; if (c.m === 'a') save();
+  inp.classList.remove('bad'); c.s[f] = v; if (c.m === 'a') { touchActive(); save(); }
   return true;
 }
 document.addEventListener('input', e => { if (e.target.matches('input[data-f]')) applyInput(e.target, false); });
@@ -435,7 +490,7 @@ document.addEventListener('focusout', () => setTimeout(() => {
 function syncVV() { const v = window.visualViewport; if (!v) return; const r = document.documentElement.style; r.setProperty('--vvt', v.offsetTop + 'px'); r.setProperty('--vvh', v.height + 'px'); }
 if (window.visualViewport) { visualViewport.addEventListener('resize', syncVV); visualViewport.addEventListener('scroll', syncVV); }
 
-A.finish = async () => {
+A.finish = async (b, e, quick) => {   // quick：跳过“确定结束吗”的确认
   const w = S.active, all = w.exercises.flatMap(e => e.sets), undone = all.filter(s => !s.done).length;
   if (!all.length) {
     if (await ask('结束训练', '本次训练还没有记录任何组。', [['放弃这次训练', 'x', 'fill-danger'], ['继续训练', 'c']]) === 'x') { S.active = null; S.timer = null; save(); restAudio(0); alarmOff(); render(); }
@@ -443,7 +498,7 @@ A.finish = async () => {
   }
   let mode = 'done';
   if (undone) { mode = await ask('结束训练', `还有 ${undone} 组没点「完成」。`, [['把它们也算作已完成', 'all', 'pri'], ['只保存已完成的组', 'done'], ['返回继续训练', 'c']]); if (!mode || mode === 'c') return; }
-  else if (await ask('结束训练', '确定结束并保存本次训练？', [['结束并保存', 'ok', 'pri'], ['取消', 'c']]) !== 'ok') return;
+  else if (!quick && await ask('结束训练', '确定结束并保存本次训练？', [['结束并保存', 'ok', 'pri'], ['取消', 'c']]) !== 'ok') return;
   const saved = JSON.parse(JSON.stringify(w));
   saved.exercises.forEach(e => { if (mode === 'all') e.sets.forEach(s => s.done = true); else e.sets = e.sets.filter(s => s.done); renum(e); });
   saved.exercises = saved.exercises.filter(e => e.sets.length);
@@ -451,7 +506,7 @@ A.finish = async () => {
     if (await ask('没有已完成的组', '要放弃这次训练吗？', [['放弃这次训练', 'x', 'fill-danger'], ['继续训练', 'c']]) === 'x') { S.active = null; S.timer = null; save(); restAudio(0); alarmOff(); render(); }
     return;
   }
-  saved.end = Date.now();
+  saved.end = endTime(w); delete saved.last; delete saved.idleAsked;
   if (!tx(() => { S.workouts.push(saved); sortW(); S.active = null; S.timer = null; })) return;
   alarmOff(); restAudio(0); render(); showSummary(saved);
 };
@@ -461,7 +516,8 @@ function showSummary(w) {
     detailHTML(w) + `<button class="btn pri big" data-x="close">好的</button>`;
 }
 function detailHTML(w) {
-  return `<div class="card">${w.exercises.map(e => { const ex = exById(e.exId); return `<div class="exline"><b>${esc(ex.name)}</b>${ex.deleted ? ' <span class="tag">已从动作库删除</span>' : ''}<div class="sub">${e.sets.map((s, i) => `${i + 1}. ${fmtSet(ex, s)}`).join('　')}</div></div>`; }).join('')}</div>`;
+  const prs = prMap(w);
+  return `<div class="card">${w.exercises.map(e => { const ex = exById(e.exId); let k = 0; return `<div class="exline"><b>${esc(ex.name)}</b>${ex.deleted ? ' <span class="tag">已从动作库删除</span>' : ''}<div class="sub">${e.sets.map(s => `${s.warm ? '热身' : ++k + '.'} ${fmtSet(ex, s)}${prs.has(s) ? ' 🏆' : ''}`).join('　')}</div></div>`; }).join('')}</div>`;
 }
 A.restPick = () => openRestPicker();
 
@@ -637,7 +693,7 @@ function rHist() {
   S.workouts.forEach(w => {
     const d = new Date(w.start), mk = `${d.getFullYear()}年${d.getMonth() + 1}月`, st = stats(w);
     if (mk !== month) { month = mk; h += `<h2>${mk}</h2>`; }
-    h += `<button class="li" data-a="hOpen" data-id="${w.id}"><div><div class="t">${fmtDT(w.start)}</div><div class="sub">${esc(w.exercises.map(e => exById(e.exId).name).join('、'))}</div><div class="sub">${st.n} 组 · ${fmtKg(st.v)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}</div></div><span class="sub">›</span></button>`;
+    h += `<button class="li" data-a="hOpen" data-id="${w.id}"><div><div class="t">${fmtDT(w.start)}</div><div class="sub">${esc(w.exercises.map(e => exById(e.exId).name).join('、'))}</div><div class="sub">${st.n} 组 · ${fmtKg(st.v)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}${(n => n ? ` · 🏆 ${n} 项纪录` : '')(prMap(w).size)}</div></div><span class="sub">›</span></button>`;
   });
   m.innerHTML = h; $('#hdr').textContent = `共 ${S.workouts.length} 次`;
 }
@@ -682,6 +738,42 @@ function rEdit() {
   });
   editOv.body.scrollTop = y;
 }
+/* ========== 个人纪录（PR） ==========
+   只和这次训练之前的正式组比；第一次练的动作没有可比的，不算纪录。 */
+const addBest = (b, s) => { b = b || { w: 0, e1: 0, r: 0, r0: 0 }; return { w: Math.max(b.w, s.w), e1: Math.max(b.e1, s.w * (1 + s.r / 30)), r: Math.max(b.r, s.r), r0: s.w === 0 ? Math.max(b.r0, s.r) : b.r0 }; };
+function prevBest(exId, before, skipId) {
+  let b = null;
+  for (const w of S.workouts) {
+    if (w.id === skipId || w.start >= before) continue;
+    for (const e of w.exercises) if (e.exId === exId) for (const s of e.sets) if (s.done && !s.warm) b = addBest(b, s);
+  }
+  return b;
+}
+// 返回这组破了哪些纪录：[[名称, 新成绩, 之前最好], ...]
+function prTypes(ex, s, b) {
+  if (!b || !s.done || s.warm) return [];
+  if (ex.timed) return s.r > b.r ? [['最长时长', s.r + ' 秒', b.r + ' 秒']] : [];
+  const out = [], e1 = s.w * (1 + s.r / 30);
+  if (s.w > 0 && s.w > b.w) out.push(['最大重量', num(s.w) + ' kg', num(b.w) + ' kg']);
+  else if (s.w > 0 && e1 > b.e1 + 0.05) out.push(['估算 1RM', num(e1) + ' kg', num(b.e1) + ' kg']);
+  if (ex.bw && s.w === 0 && b.r0 > 0 && s.r > b.r0) out.push(['单组次数', s.r + ' 次', b.r0 + ' 次']);
+  return out;
+}
+// 一次训练里每个破纪录的组 → 破了什么。同一次里后面的组要超过前面的才算
+function prMap(w) {
+  const res = new Map(), bests = {};
+  w.exercises.forEach(e => {
+    const ex = exById(e.exId);
+    if (!(e.exId in bests)) bests[e.exId] = prevBest(e.exId, w.start, w.id);
+    e.sets.forEach(s => {
+      const b = bests[e.exId]; if (!b || !s.done || s.warm) return;
+      const t = prTypes(ex, s, b); if (t.length) res.set(s, t);
+      bests[e.exId] = addBest(b, s);
+    });
+  });
+  return res;
+}
+
 /* ========== 进步曲线 ========== */
 const METRICS = {
   max: ['最大重量', 'kg', s => Math.max(...s.map(x => x.w))],
@@ -696,7 +788,7 @@ let pEx = null, pMet = 'max', pSel = -1, pPts = [];
 function series(exId, met) {
   const f = METRICS[met][2], out = [];
   [...S.workouts].reverse().forEach(w => {
-    const sets = w.exercises.filter(e => e.exId === exId).flatMap(e => e.sets.filter(s => s.done));
+    const sets = w.exercises.filter(e => e.exId === exId).flatMap(e => e.sets.filter(s => s.done && !s.warm));
     if (sets.length) out.push({ t: w.start, v: num(f(sets)), sets });
   });
   return out;
@@ -785,6 +877,8 @@ function rSet() {
       <div class="seg" style="margin-top:0">${[['bg', '锁屏也响'], ['mix', '不打断音乐'], ['off', '只闪屏']].map(([k, t]) => `<button class="${soundMode() === k ? 'on' : ''}" data-a="sound" data-k="${k}">${t}</button>`).join('')}</div>
       <div class="sub">${{ bg: '锁屏、切到别的 App、开着静音开关都会响。代价：休息期间会暂停你正在放的音乐。', mix: '不会打断音乐，但只有屏幕亮着、停留在本工具时才响；静音开关打开时听不到。', off: '不出声，只在回到本工具时闪屏提醒。' }[soundMode()]}</div>
       <button class="btn big" data-a="testSound">试听提醒（5 秒后响）</button></div>
+    <h2>自动结束训练</h2><div class="card"><div class="chips" style="flex-wrap:wrap">${[[10, '10 分钟'], [20, '20 分钟'], [30, '30 分钟'], [0, '不自动结束']].map(([v, t]) => `<button class="chip ${idleMin() === v ? 'on' : ''}" data-a="idle" data-v="${v}">${t}</button>`).join('')}</div>
+      <div class="sub" style="margin-top:8px">${idleMin() ? `训练中超过 ${idleMin()} 分钟没有任何操作，就自动结束并保存，结束时间按最后一组完成的时间算。弹窗里可以撤销。` : '不会自动结束，记得自己点「结束训练」。'}</div></div>
     <h2>数据备份</h2><div class="card"><div>上次备份：<b>${lb ? fmtDT(lb) : '从未备份'}</b>${lb ? `（${Math.floor((Date.now() - lb) / DAY)} 天前）` : ''}</div>
       <div class="sub" style="margin:6px 0 4px">共 ${S.workouts.length} 次训练、${custom} 个自定义动作，占用约 ${kb} KB。</div>
       <button class="btn pri big" data-a="exp">导出备份</button><button class="btn big" data-a="imp">导入备份文件</button><button class="btn big" data-a="paste">粘贴备份文本导入</button>
@@ -795,6 +889,7 @@ function rSet() {
   $('#hdr').textContent = '';
 }
 A.lib = () => openPicker(null, true);
+A.idle = b => { S.settings.idleMin = +b.dataset.v; save(); rSet(); };
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
 A.exp = async () => {
   const now = Date.now(), data = JSON.parse(JSON.stringify(S));
@@ -863,8 +958,10 @@ const WEEK_MS = 7 * DAY, CAT_ORDER = ['胸', '背', '腿', '肩', '手臂', '核
 // 周一 0 点为一周起点
 const weekStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; };
 let stRange = 7;
+// 统计也算上正在进行的训练，练到一半来看不会少算
+const allW = () => S.workouts.concat(S.active ? [S.active] : []);
 
-// 把一批训练汇总成：次数、组数、容量、时长、各部位组数
+// 把一批训练汇总成：次数、组数、容量、时长、各部位组数（热身组不算）
 function agg(ws) {
   const o = { n: ws.length, sets: 0, vol: 0, ms: 0, byCat: {} };
   CAT_ORDER.forEach(c => { o.byCat[c] = 0; });
@@ -875,7 +972,7 @@ function agg(ws) {
       const cat = ex.cat || '其他';
       if (o.byCat[cat] === undefined) o.byCat[cat] = 0;
       e.sets.forEach(s => {
-        if (!s.done) return;
+        if (!s.done || s.warm) return;
         o.sets++; o.byCat[cat]++;
         if (!ex.timed) o.vol += s.w * s.r;
       });
@@ -887,22 +984,23 @@ function agg(ws) {
 A.stRange = b => { stRange = Number(b.dataset.r); render(); };
 
 function rStat() {
-  const m = $('#main'), now = Date.now();
-  if (!S.workouts.length) {
+  const m = $('#main'), now = Date.now(), ws = allW();
+  if (!ws.length) {
     m.innerHTML = `<div class="tip">📊 练过几次之后，这里会显示：这段时间练了多少组、各部位练得均不均衡、近两个月的训练量走势。</div><button class="btn pri big" data-a="tab" data-tab="train">去训练</button>`;
     $('#hdr').textContent = ''; return;
   }
   const w0 = weekStart(now), from = w0 - (stRange === 7 ? 0 : 21 * DAY);
-  const cur = agg(S.workouts.filter(w => w.start >= from));
+  const cur = agg(ws.filter(w => w.start >= from));
 
   // 近 8 周走势（最后一根是本周）
   const bars = [];
   for (let i = 7; i >= 0; i--) {
     const s = w0 - i * WEEK_MS;
-    bars.push({ s, a: agg(S.workouts.filter(w => w.start >= s && w.start < s + WEEK_MS)) });
+    bars.push({ s, a: agg(ws.filter(w => w.start >= s && w.start < s + WEEK_MS)) });
   }
   const maxBar = Math.max(1, ...bars.map(b => b.a.sets));
-  const prev = bars[bars.length - 2].a.sets, dSets = cur.sets - prev;
+  // 本周 / 上周固定取最后两根柱子，不随“本周 / 近 4 周”切换而变
+  const thisWk = bars[bars.length - 1].a.sets, prev = bars[bars.length - 2].a.sets, dSets = thisWk - prev;
 
   // 部位分布
   const cats = CAT_ORDER.concat(Object.keys(cur.byCat).filter(c => !CAT_ORDER.includes(c)));
@@ -912,8 +1010,8 @@ function rStat() {
     return `<div class="catrow"><span class="catname">${esc(c)}</span><div class="catbar"><i style="width:${Math.round(v / maxCat * 100)}%${v ? '' : ';background:var(--line)'}"></i></div><span class="catnum">${v} 组</span></div>`;
   }).join('');
 
-  // 平衡提示：只提醒“最近两个月里练过、但这段时间没练”的部位，避免每次都说没练核心
-  const recent = new Set(S.workouts.filter(w => w.start >= now - 42 * DAY)
+  // 平衡提示：只提醒“最近 6 周里练过、但这段时间没练”的部位，避免每次都说没练核心
+  const recent = new Set(ws.filter(w => w.start >= now - 42 * DAY)
     .flatMap(w => w.exercises.map(e => (exById(e.exId) || {}).cat)).filter(Boolean));
   const trained = cats.map(c => ({ c, v: cur.byCat[c] || 0 })).filter(x => x.v > 0);
   let hint = '';
@@ -922,7 +1020,7 @@ function rStat() {
     hint = (hi.v >= lo.v * 3 && hi.v - lo.v >= 6) ? `${hi.c} ${hi.v} 组，${lo.c} 只有 ${lo.v} 组，差得有点多。` : '练得还算均衡。';
   }
   const miss = cats.filter(c => !cur.byCat[c] && recent.has(c));
-  if (miss.length) hint += `${hint ? ' ' : ''}${stRange === 7 ? '本周' : '这一个月'}还没练：${miss.join('、')}。`;
+  if (miss.length) hint += `${hint ? ' ' : ''}${stRange === 7 ? '本周' : '这 4 周'}还没练：${miss.join('、')}。`;
 
   m.innerHTML = `
     <div class="seg">${[[7, '本周'], [28, '近 4 周']].map(([k, t]) => `<button class="${stRange === k ? 'on' : ''}" data-a="stRange" data-r="${k}">${t}</button>`).join('')}</div>
@@ -940,7 +1038,7 @@ function rStat() {
         const h = Math.round(b.a.sets / maxBar * 100), d = new Date(b.s);
         return `<div class="wkbar"><span class="wknum">${b.a.sets || ''}</span><div class="wkfill"><i style="height:${b.a.sets ? Math.max(3, h) : 2}%${b.a.sets ? '' : ';opacity:.22'}"></i></div><span class="wklab">${d.getMonth() + 1}/${d.getDate()}</span></div>`;
       }).join('')}</div>
-      <div class="sub" style="margin-top:10px">本周 ${cur.sets} 组，上周 ${prev} 组${dSets ? `（${dSets > 0 ? '多' : '少'}了 ${Math.abs(dSets)} 组）` : ''}。每根柱子是一周，从左到右由早到晚。</div>
+      <div class="sub" style="margin-top:10px">本周 ${thisWk} 组，上周 ${prev} 组${dSets ? `（${dSets > 0 ? '多' : '少'}了 ${Math.abs(dSets)} 组）` : ''}。每根柱子是一周，从左到右由早到晚。热身组不算。</div>
     </div>`;
   $('#hdr').textContent = `共 ${S.workouts.length} 次`;
 }
@@ -953,8 +1051,8 @@ function render() {
   renderTimer();
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b && !b.disabled && A[b.dataset.a]) A[b.dataset.a](b, e); });
-setInterval(() => { if (S.timer) renderTimer(); updElapsed(); }, 250);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (AC) AC.resume().catch(() => {}); renderTimer(); updElapsed(); } });
+setInterval(() => { if (S.timer) renderTimer(); updElapsed(); autoEnd(); }, 500);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (AC) AC.resume().catch(() => {}); renderTimer(); updElapsed(); setTimeout(autoEnd, 400); } });
 window.addEventListener('pageshow', () => { renderTimer(); updElapsed(); });
 // 运行时生成主屏幕图标（PNG data URL，不依赖外部文件）
 (function icon() {
@@ -969,8 +1067,9 @@ window.addEventListener('pageshow', () => { renderTimer(); updElapsed(); });
 })();
 S = load();
 applyAudioSession(); syncVV();
-if (S.active) toast('已恢复进行中的训练');
 render();
+// 打开时先看是不是早该结束了；没结束才提示“已恢复”
+setTimeout(() => { autoEnd(); if (S.active && !document.querySelector('.ov')) toast('已恢复进行中的训练'); }, 300);
 
 /* ========== 离线支持 ========== */
 // 只有 https / localhost 能注册 Service Worker；双击打开本地文件时自动跳过，不影响使用
