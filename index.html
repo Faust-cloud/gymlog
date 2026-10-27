@@ -183,6 +183,7 @@ canvas{display:block;width:100%;height:260px;touch-action:manipulation}
 'use strict';
 /* ========== 数据层 ========== */
 const KEY = 'gymlog_v1', VER = 1, DAY = 864e5;
+const APPVER = '10.27-3';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
 const CATS = ['胸', '背', '腿', '肩', '手臂', '核心'];
 const BUILTIN = [
   ['胸','杠铃卧推'],['胸','上斜杠铃卧推'],['胸','哑铃卧推'],['胸','上斜哑铃卧推'],['胸','哑铃飞鸟'],['胸','绳索夹胸'],['胸','双杠臂屈伸'],
@@ -190,9 +191,17 @@ const BUILTIN = [
   ['腿','杠铃深蹲'],['腿','腿举'],['腿','罗马尼亚硬拉'],['腿','箭步蹲'],['腿','腿屈伸'],['腿','腿弯举'],['腿','提踵'],
   ['肩','杠铃推举'],['肩','哑铃推举'],['肩','侧平举'],['肩','面拉'],['肩','反向飞鸟'],
   ['手臂','杠铃弯举'],['手臂','哑铃弯举'],['手臂','锤式弯举'],['手臂','绳索下压'],['手臂','窄距卧推'],
-  ['核心','卷腹'],['核心','悬垂举腿'],['核心','平板支撑']
+  ['核心','卷腹'],['核心','悬垂举腿'],['核心','平板支撑'],
+  // 10/27 新增（只能往后加：编号 b34 起按顺序生成，插在中间会让已有记录对不上动作）
+  ['手臂','仰卧臂屈伸'],['肩','Y字侧平举'],
+  ['背','单手绳索下拉'],['背','单手器械划船'],['背','对握下拉'],['背','开肘划船'],['手臂','绳索弯举'],
+  ['腿','单腿硬拉'],['腿','保加利亚分腿蹲'],['腿','高脚杯深蹲'],['腿','山羊挺身']
 ];
-const BW = new Set(['双杠臂屈伸', '引体向上', '卷腹', '悬垂举腿', '平板支撑']);
+const BW = new Set(['双杠臂屈伸', '引体向上', '卷腹', '悬垂举腿', '平板支撑', '山羊挺身']);
+// 同一个动作的其他叫法：搜索时也能搜到
+const ALIAS = { b4: '哑铃上斜卧推', b12: '单手哑铃划船', b16: '杠铃罗马尼亚硬拉 RDL', b25: '后束', b34: '碎颅者', b36: '单臂绳索下拉', b37: '单臂器械划船', b39: '后束 宽握划船', b42: '保加利亚单腿蹲' };
+// 新内置动作如果用户已经自建过（同名或常见别名），就不再重复添加
+const SAME = { '保加利亚分腿蹲': ['保加利亚单腿蹲', '保加利亚蹲'], '仰卧臂屈伸': ['仰卧臂屈伸（哑铃）', '碎颅者'], '高脚杯深蹲': ['高脚杯蹲'] };
 const builtins = () => BUILTIN.map(([cat, name], i) => ({ id: 'b' + (i + 1), name, cat, bw: BW.has(name), timed: name === '平板支撑', custom: false }));
 const defState = () => ({ version: VER, exercises: builtins(), workouts: [], active: null, timer: null, settings: { rest: 90, lastBackup: null, sound: 'bg' } });
 
@@ -201,7 +210,12 @@ function migrate(d) {
   if (!d || typeof d !== 'object') throw new Error('数据格式错误');
   const s = defState();
   if (Array.isArray(d.exercises)) s.exercises = d.exercises;
-  builtins().forEach(b => { if (!s.exercises.some(e => e.id === b.id)) s.exercises.push(b); });
+  // 10.27-2 曾把开肘划船放在“肩”，改回“背”（用户自己改过的不动）
+  s.exercises.forEach(e => { if (e.id === 'b39' && !e.custom && e.cat === '肩' && !e.catSet) e.cat = '背'; });
+  builtins().forEach(b => {
+    const names = [b.name, ...(SAME[b.name] || [])];
+    if (!s.exercises.some(e => e.id === b.id || (!e.deleted && names.includes(e.name)))) s.exercises.push(b);
+  });
   if (Array.isArray(d.workouts)) s.workouts = d.workouts;
   s.active = d.active || null;
   s.timer = d.timer || null;
@@ -528,7 +542,7 @@ function openPicker(onPick, manage) {
   ov.body.innerHTML = `<input class="txt" type="search" placeholder="搜索动作" data-x="q" autocomplete="off"><div class="chips" style="margin:10px 0" data-x="cats"></div><div data-x="list"></div>`;
   const draw = () => {
     ov.querySelector('[data-x="cats"]').innerHTML = ['全部', ...CATS].map(c => `<button class="chip ${c === cat ? 'on' : ''}" data-cat="${c}">${c}</button>`).join('');
-    const list = S.exercises.filter(e => !e.deleted && (cat === '全部' || e.cat === cat) && (!q || e.name.toLowerCase().includes(q.toLowerCase())));
+    const list = S.exercises.filter(e => !e.deleted && (cat === '全部' || e.cat === cat) && (!q || (e.name + ' ' + (ALIAS[e.id] || '')).toLowerCase().includes(q.toLowerCase())));
     const tags = e => [e.cat, e.bw && '自重', e.timed && '计时(秒)', e.custom && '自定义'].filter(Boolean).join(' · ');
     ov.querySelector('[data-x="list"]').innerHTML = list.length ? list.map(e => manage
       ? `<div class="li"><div><div class="t">${esc(e.name)}</div><div class="sub">${tags(e)}</div></div><div class="exb"><button class="btn" data-edit="${e.id}">编辑</button><button class="btn danger" data-del="${e.id}">删除</button></div></div>`
@@ -558,7 +572,7 @@ function exForm(ex, cb) {
     if (S.exercises.some(e => !e.deleted && e.id !== ex.id && e.name === name)) return toast('已有同名动作', true);
     const val = { name, cat: ov.querySelector('[data-x="cat"]').value, bw: ov.querySelector('[data-x="bw"]').checked, timed: ov.querySelector('[data-x="timed"]').checked };
     let target;
-    if (!tx(() => { if (isNew) { target = { id: 'c' + uid(), ...val, custom: true }; S.exercises.push(target); } else { target = exById(ex.id); Object.assign(target, val); } })) return;
+    if (!tx(() => { if (isNew) { target = { id: 'c' + uid(), ...val, custom: true }; S.exercises.push(target); } else { target = exById(ex.id); Object.assign(target, val, { catSet: true }); } })) return;
     ov.close(); toast('已保存'); cb && cb(target); if (!isNew) render();
   });
 }
@@ -701,6 +715,7 @@ A.hOpen = b => {
   const w = S.workouts.find(x => x.id === b.dataset.id); if (!w) return;
   const st = stats(w), ov = sheet(fmtDate(w.start));
   ov.body.innerHTML = `<div class="sub">${fmtDT(w.start)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}</div>
+    ${w.end && w.end - w.start > 4 * 3600000 ? `<div class="tip warn">这次记了 ${fmtDur(w.end - w.start)}，可能是忘了点「结束训练」。点下面的「编辑」可以改结束时间。</div>` : ''}
     <div class="stats"><div class="stat"><span class="sub">动作数</span><b>${st.ex}</b></div><div class="stat"><span class="sub">总组数</span><b>${st.n}</b></div><div class="stat" style="grid-column:1/-1"><span class="sub">总容量</span><b>${fmtKg(st.v)}</b></div></div>
     ${detailHTML(w)}<div class="row2"><button class="btn" data-x="edit">编辑</button><button class="btn danger" data-x="del">删除这次训练</button></div>`;
   ov.addEventListener('click', async e => {
@@ -720,6 +735,7 @@ function openEdit(w) {
     const sets = editW.exercises.flatMap(e => e.sets);
     if (document.querySelector('.sheet input.bad')) return toast('有不合法的数字，请先修正', true);
     if (!sets.length) return toast('至少保留一组；要删除整次训练请在详情里删除', true);
+    if (editW.end && editW.end <= editW.start) return toast('结束时间要晚于开始时间', true);
     editW.exercises = editW.exercises.filter(e => e.sets.length); editW.exercises.forEach(renum);
     const ok = tx(() => { const i = S.workouts.findIndex(x => x.id === w.id); S.workouts[i] = editW; sortW(); });
     if (ok) { orig(); editW = null; editOv = null; toast('已保存'); render(); }
@@ -728,14 +744,30 @@ function openEdit(w) {
 }
 function rEdit() {
   if (!editOv) return;
-  const y = editOv.body.scrollTop;
+  const y = editOv.body.scrollTop, ld = lastDone(editW);
+  const dur = editW.end ? editW.end - editW.start : 0, long = dur > 4 * 3600000;
   editOv.body.innerHTML = `<label class="lbl">开始时间</label><input class="txt" type="datetime-local" data-x="dt" value="${toLocalInput(editW.start)}">
-    <div class="sub" style="margin-top:6px">编辑模式下新加的组默认算作已完成，可点按钮切换。</div>` +
+    <label class="lbl">结束时间</label><input class="txt" type="datetime-local" data-x="et" value="${editW.end ? toLocalInput(editW.end) : ''}">
+    <div class="sub" style="margin-top:6px;${long ? 'color:var(--danger);font-weight:700' : ''}">时长：${dur ? fmtDur(dur) : '未记录'}${long ? '，可能是忘了点结束' : ''}</div>
+    <div class="chips" style="flex-wrap:wrap;margin-top:8px">
+      ${ld > editW.start ? `<button class="chip" data-x="endLast">按最后一组 ${p2(new Date(ld).getHours())}:${p2(new Date(ld).getMinutes())} 结束</button>` : ''}
+      ${[60, 90, 120].map(m => `<button class="chip" data-x="dur" data-m="${m}">练了 ${m / 60} 小时</button>`).join('')}
+    </div>
+    <div class="sub" style="margin-top:10px">编辑模式下新加的组默认算作已完成，可点按钮切换。</div>` +
     editorHTML(editW, 'e') + `<button class="btn big" data-a="addEx" data-m="e">＋ 添加动作</button>`;
-  editOv.body.querySelector('[data-x="dt"]').addEventListener('change', e => {
+  const q = s => editOv.body.querySelector(s);
+  // 改开始时间：时长保持不变；改结束时间：只改结束
+  q('[data-x="dt"]').addEventListener('change', e => {
     const t = new Date(e.target.value).getTime(); if (!t) return toast('日期无效', true);
-    const dur = editW.end ? editW.end - editW.start : 0; editW.start = t; if (editW.end) editW.end = t + dur;
+    const d = editW.end ? editW.end - editW.start : 0; editW.start = t; if (editW.end) editW.end = t + d; rEdit();
   });
+  q('[data-x="et"]').addEventListener('change', e => {
+    const t = new Date(e.target.value).getTime(); if (!t) return toast('日期无效', true);
+    if (t <= editW.start) { toast('结束时间要晚于开始时间', true); return rEdit(); }
+    editW.end = t; rEdit();
+  });
+  editOv.body.querySelectorAll('[data-x="dur"]').forEach(b => b.addEventListener('click', () => { editW.end = editW.start + +b.dataset.m * 60000; rEdit(); }));
+  const el = q('[data-x="endLast"]'); if (el) el.addEventListener('click', () => { editW.end = ld; rEdit(); });
   editOv.body.scrollTop = y;
 }
 /* ========== 个人纪录（PR） ==========
@@ -885,7 +917,9 @@ function rSet() {
       <div class="sub" style="margin-top:8px">导出时在分享菜单选「存储到文件」，可存到 iCloud 云盘。注意：从主屏幕打开和在 Safari 里打开的数据互不相通。</div></div>
     <h2>动作库</h2><button class="li" data-a="lib"><div><div class="t">管理动作库</div><div class="sub">添加、编辑、删除动作</div></div><span class="sub">›</span></button>
     <h2>危险操作</h2><button class="btn danger big" data-a="wipe">清空所有数据</button>
-    <div class="sub" style="text-align:center;margin:18px 0">练习记录 · 数据版本 v${VER} · 数据只保存在本机<br>${('serviceWorker' in navigator) ? (navigator.serviceWorker.controller ? '离线可用 ✓ 断网也能打开' : '正在准备离线缓存…刷新一次即可') : '离线不可用（请用网页方式打开）'}</div>`;
+    <div class="sub" style="text-align:center;margin:18px 0">练习记录 · 版本 ${APPVER} · 数据只保存在本机<br>${('serviceWorker' in navigator) ? (navigator.serviceWorker.controller ? '离线可用 ✓ 断网也能打开' : '正在准备离线缓存…刷新一次即可') : '离线不可用（请用网页方式打开）'}</div>
+    <button class="btn big" data-a="update">检查更新</button>
+    <div class="sub" style="text-align:center;margin:6px 0 18px">GitHub 上更新代码后，手机上没变就点这里。训练记录不会丢。</div>`;
   $('#hdr').textContent = '';
 }
 A.lib = () => openPicker(null, true);
@@ -1075,7 +1109,21 @@ setTimeout(() => { autoEnd(); if (S.active && !document.querySelector('.ov')) to
 // 只有 https / localhost 能注册 Service Worker；双击打开本地文件时自动跳过，不影响使用
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  // 新版离线缓存接管后自动刷新一次，不用手动划掉重开（第一次安装时不刷新）
+  const hadCtrl = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadCtrl || reloaded) return; reloaded = true; location.reload(); });
 }
+// 手动更新：清掉离线缓存后从网上重新加载。训练数据存在别处，不受影响
+A.update = async () => {
+  if (!navigator.onLine) return toast('现在没网，联网后再检查更新', true);
+  toast('正在检查更新…');
+  try {
+    if ('caches' in window) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
+    const r = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); if (r) await r.update();
+  } catch (e) {}
+  location.reload();
+};
 </script>
 </body>
 </html>
