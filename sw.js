@@ -1,11 +1,15 @@
 /* 练习记录 · 离线缓存
    目的：健身房地下层没信号时，也能从主屏幕秒开。
-   策略：先用缓存立刻显示，同时后台拉一次最新版；下次打开即为新版。 */
-const CACHE = 'gymlog-v1';
+   策略：先用缓存立刻显示，同时后台拉一次最新版；下次打开即为新版。
+   发布新版后如果手机迟迟不更新，把下面 CACHE 的版本号加 1，手机会强制换成新文件。 */
+const CACHE = 'gymlog-v2';
 const ASSETS = ['./', './index.html'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // cache: 'reload' 跳过浏览器自己的 HTTP 缓存，确保装进来的是服务器上的最新文件
+  e.waitUntil(caches.open(CACHE)
+    .then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -20,16 +24,15 @@ self.addEventListener('activate', e => {
 async function fromCache(req) {
   const c = await caches.open(CACHE);
   return (await c.match(req)) ||
-         (await c.match(req, { ignoreSearch: true })) ||
-         (await c.match('./index.html')) ||
-         (await c.match('./'));
+    (await c.match(req, { ignoreSearch: true })) ||
+    (await c.match('./index.html')) ||
+    (await c.match('./'));
 }
 
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   if (new URL(req.url).origin !== self.location.origin) return;
-
   e.respondWith((async () => {
     const hit = await fromCache(req);
     if (hit) return hit;
@@ -40,12 +43,12 @@ self.addEventListener('fetch', e => {
       });
     }
   })());
-
-  // 后台更新缓存，不阻塞显示
+  // 后台更新缓存，不阻塞显示。
+  // 用网址重新发请求：页面导航请求（mode=navigate）带上额外参数时，部分浏览器会直接报错，导致缓存永远不更新
   e.waitUntil((async () => {
     try {
-      const res = await fetch(req, { cache: 'no-cache' });
-      if (res && res.ok) { const c = await caches.open(CACHE); c.put(req, res.clone()); }
+      const res = await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
+      if (res && res.ok) { const c = await caches.open(CACHE); await c.put(req, res.clone()); }
     } catch (err) { /* 断网时保持旧缓存 */ }
   })());
 });
