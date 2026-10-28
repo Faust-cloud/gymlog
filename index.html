@@ -80,7 +80,18 @@ body.timer-on.kb #hpill{display:inline-block}
 .stp input{flex:1 1 0;width:0;min-width:0;height:44px;font-size:20px;font-weight:700;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0 2px}
 .stp .btn{padding:0;width:50px;min-width:50px;font-size:15px;background:var(--card)}
 .unit{width:20px;color:var(--sub);font-size:13px;flex-shrink:0}
-.chk{grid-column:2;grid-row:2/4;min-height:94px;font-size:16px;line-height:1.3;background:var(--card);border:2px solid var(--ok)!important;color:var(--ok)}
+.chk{grid-column:2;grid-row:2;min-height:44px;font-size:16px;line-height:1.2;background:var(--card);border:2px solid var(--ok)!important;color:var(--ok)}
+/* 没数：按预填次数记成“约 N 次” */
+.estbtn{grid-column:2;grid-row:3;min-height:44px;padding:0;font-size:14px;line-height:1.15;background:var(--card);border:1px dashed var(--sub)!important;color:var(--sub)}
+.estbtn small{display:block;font-size:11px;font-weight:500}
+/* 多久没练 */
+.gap{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.gapi{background:var(--card2);border-radius:10px;padding:6px 10px;font-size:14px}
+.gapi b{margin-left:4px}
+.gapi.old{background:var(--cur);color:var(--acc)}
+.gapi.fresh{opacity:.5}
+.chip small{font-size:11px;font-weight:500;opacity:.8;margin-left:3px}
+.secth{font-size:13px;font-weight:700;color:var(--sub);margin:14px 4px 2px}
 input.bad{border-color:var(--danger)!important;box-shadow:0 0 0 2px var(--danger)}
 .addset{width:100%;margin-top:8px;border:1px dashed var(--line);background:none}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:var(--tab);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
@@ -183,7 +194,7 @@ canvas{display:block;width:100%;height:260px;touch-action:manipulation}
 'use strict';
 /* ========== 数据层 ========== */
 const KEY = 'gymlog_v1', VER = 1, DAY = 864e5;
-const APPVER = '10.27-3';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
+const APPVER = '10.28';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
 const CATS = ['胸', '背', '腿', '肩', '手臂', '核心'];
 const BUILTIN = [
   ['胸','杠铃卧推'],['胸','上斜杠铃卧推'],['胸','哑铃卧推'],['胸','上斜哑铃卧推'],['胸','哑铃飞鸟'],['胸','绳索夹胸'],['胸','双杠臂屈伸'],
@@ -260,7 +271,7 @@ const fmtDT = t => { const d = new Date(t); return `${fmtDate(t)} 周${WK[d.getD
 const fmtDur = ms => { const m = Math.max(1, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)}小时${m % 60}分` : `${m}分钟`; };
 const fmtClock = ms => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600); return (h ? h + ':' + p2(Math.floor(s / 60) % 60) : Math.floor(s / 60)) + ':' + p2(s % 60); };
 const fmtW = (ex, w) => ex.bw ? (w > 0 ? '自重+' + num(w) : '自重') : String(num(w));
-const fmtSet = (ex, s) => ex.timed ? (s.w > 0 ? '+' + num(s.w) + 'kg ' : '') + s.r + '秒' : fmtW(ex, s.w) + '×' + s.r;
+const fmtSet = (ex, s) => { const r = (s.est ? '约' : '') + s.r; return ex.timed ? (s.w > 0 ? '+' + num(s.w) + 'kg ' : '') + r + '秒' : fmtW(ex, s.w) + '×' + r; };
 const fmtKg = v => num(v).toLocaleString('zh-CN') + ' kg';
 function parseW(v) { v = String(v).trim().replace(/,|，/g, '.'); if (!/^\d+(\.\d+)?$/.test(v)) return null; const n = Number(v); return n <= 1000 ? num(n) : null; }
 function parseR(v) { v = String(v).trim(); if (!/^\d+$/.test(v)) return null; const n = Number(v); return n >= 1 && n <= 36000 ? n : null; }
@@ -325,6 +336,8 @@ function rTrain() {
       h += `<div class="tip"><b>👋 欢迎！三步开始记录：</b><ol><li>点下面的「开始训练」</li><li>点「＋ 添加动作」，选部位再选动作，逐组填重量和次数</li><li>每做完一组点「完成 ✓」，会自动开始组间休息倒计时</li></ol><div class="sub" style="margin-top:8px">练完点「结束训练」查看总结。建议先在 Safari 分享菜单里「添加到主屏幕」，以后都从主屏幕图标打开。</div></div>`;
     h += `<button class="btn pri big" data-a="start">开始训练</button>`;
     const last = S.workouts[0];
+    if (resumable(last)) h = `<div class="tip"><b>${last.auto ? `今天这次训练在 ${fmtHM(last.end).replace('今天 ', '')} 自动结束了` : '今天已经练过一次'}</b><div class="sub" style="margin:4px 0 8px">还在练、或者漏记了几组？回到这次训练接着记，不会多出一条记录。</div><button class="btn pri" data-a="resume" data-id="${last.id}">继续这次训练</button></div>` + h.replace('btn pri big', 'btn big');
+    h += gapHTML();
     if (last) { const st = stats(last); h += `<h2>上次训练</h2><button class="li" data-a="hOpen" data-id="${last.id}"><div><div class="t">${fmtDT(last.start)}</div><div class="sub">${esc(last.exercises.map(e => exById(e.exId).name).join('、'))}</div><div class="sub">${st.n} 组 · ${fmtKg(st.v)}</div></div><span class="sub">›</span></button>`; }
     m.innerHTML = h; $('#hdr').textContent = ''; return;
   }
@@ -333,7 +346,12 @@ function rTrain() {
      <div class="row2" style="margin-top:10px"><button class="btn danger" data-a="restPick">休息 ${S.settings.rest} 秒 ▾</button><button class="btn pri" data-a="finish">结束训练</button></div>`;
   updElapsed();
 }
-function updElapsed() { const h = $('#hdr'); if (tab === 'train' && S.active) h.textContent = '已训练 ' + fmtClock(Date.now() - S.active.start); }
+// 顶部时长：停了 10 分钟以上就显示“已停 X 分钟”，不再一直往上加
+function updElapsed() {
+  const h = $('#hdr'); if (tab !== 'train' || !S.active) return;
+  const idle = Date.now() - lastAct(S.active), resting = S.timer && S.timer.end > Date.now();
+  h.textContent = idle > 10 * 60000 && !resting ? `已停 ${fmtAgo(idle)}` : '已训练 ' + fmtClock(Date.now() - S.active.start);
+}
 
 function editorHTML(w, m) {
   if (!w.exercises.length) return `<div class="tip" data-m="${m}">还没有动作，点「＋ 添加动作」开始。</div>`;
@@ -357,13 +375,14 @@ function setHTML(ex, s, si, cur, key, lab, prev, pr) {
   const rd = ex.timed ? 5 : 1, trophy = pr ? ' 🏆' : '';
   if (s.done && openSet !== key) {
     const wt = ex.bw ? fmtW(ex, s.w) + (s.w > 0 ? ' kg' : '') : num(s.w) + ' kg';
-    return `<div class="set mini ${s.warm ? 'warm' : ''}" data-si="${si}"><button class="mini-main" data-a="openSet">${lab}<b>${wt} × ${s.r} ${ex.timed ? '秒' : '次'}${trophy}</b></button><button class="btn mini-ok" data-a="done" aria-label="取消完成">✓</button></div>`;
+    return `<div class="set mini ${s.warm ? 'warm' : ''}" data-si="${si}"><button class="mini-main" data-a="openSet">${lab}<b>${wt} × ${s.est ? '约' : ''}${s.r} ${ex.timed ? '秒' : '次'}${trophy}</b></button><button class="btn mini-ok" data-a="done" aria-label="取消完成">✓</button></div>`;
   }
   return `<div class="set ${s.done ? 'done' : ''} ${cur ? 'cur' : ''} ${s.warm ? 'warm' : ''}" data-si="${si}">
     <div class="sethead"><span>${lab}${ex.bw && !s.w ? ' · 自重' : ''}${cur ? ' · 进行中' : ''}${trophy}${prev ? `<span class="prev">上次 ${esc(prev)}</span>` : ''}</span><span>${s.done ? '<button class="btn ghost" data-a="openSet">收起</button>' : ''}<button class="btn ghost warmbtn" data-a="warm">${s.warm ? '改为正式组' : '标为热身'}</button><button class="btn ghost" data-a="delSet">删除</button></span></div>
     <div class="stp"><label>${ex.bw ? '负重' : '重量'}</label><button class="btn" data-a="step" data-f="w" data-d="-2.5">−2.5</button><input data-f="w" inputmode="decimal" autocomplete="off" value="${num(s.w)}" aria-label="重量"><button class="btn" data-a="step" data-f="w" data-d="2.5">+2.5</button><span class="unit">kg</span></div>
     <div class="stp"><label>${ex.timed ? '秒数' : '次数'}</label><button class="btn" data-a="step" data-f="r" data-d="-${rd}">−${rd}</button><input data-f="r" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${s.r}" aria-label="次数"><button class="btn" data-a="step" data-f="r" data-d="${rd}">+${rd}</button><span class="unit">${ex.timed ? '秒' : '次'}</span></div>
-    <button class="btn chk" data-a="done">${s.done ? '✓<br>已完成' : '完成<br>✓'}</button></div>`;
+    <button class="btn chk" data-a="done">${s.done ? '✓ 已完成' : '完成 ✓'}</button>
+    ${s.done ? `<span class="estbtn" style="display:grid;place-items:center;border-style:none!important">${s.est ? '约数' : ''}</span>` : `<button class="btn estbtn" data-a="est">没数 ✓<small>记约 ${s.r}</small></button>`}</div>`;
 }
 // 根据点击位置找到对应的训练、动作、组
 function ctx(el) {
@@ -422,18 +441,30 @@ function autoEnd() {
   const saved = JSON.parse(JSON.stringify(w));
   saved.exercises.forEach(e => { e.sets = e.sets.filter(s => s.done); renum(e); });
   saved.exercises = saved.exercises.filter(e => e.sets.length);
-  saved.end = endTime(w); delete saved.last;
+  saved.end = endTime(w); delete saved.last; saved.auto = true;
   const keep = saved.exercises.length > 0;
   if (!tx(() => { if (keep) { S.workouts.push(saved); sortW(); } S.active = null; S.timer = null; })) return;
   restAudio(0); alarmOff(); openSet = null; render();
   const msg = keep
-    ? `已经 ${fmtAgo(idle)}没有操作，这次训练已自动结束并保存。\n结束时间：${fmtHM(saved.end)}${estimated ? '（旧记录没有时间信息，这是按组数估算的，可以到「历史」里改）' : '（最后一组完成的时间）'}\n共 ${fmtDur(saved.end - saved.start)}，${stats(saved).n} 组。没点「完成」的组没有保存。`
+    ? `已经 ${fmtAgo(idle)}没有操作，这次训练已自动结束并保存。\n结束时间：${fmtHM(saved.end)}${estimated ? '（旧记录没有时间信息，这是按组数估算的，可以到「历史」里改）' : '（最后一组完成的时间）'}\n共 ${fmtDur(saved.end - saved.start)}，${stats(saved).n} 组。没点「完成」的组没有保存。\n其实还在练、只是忘了记？今天之内都能在「训练」页点「继续这次训练」接着记。`
     : `已经 ${fmtAgo(idle)}没有操作，这次训练没有完成任何一组，已自动放弃。`;
-  ask('已自动结束训练', msg, [['好的', 'ok', 'pri'], ['撤销，我还在练', 'undo']]).then(v => {
+  ask('已自动结束训练', msg, [['练完了', 'ok', 'pri'], ['还在练，继续记', 'undo']]).then(v => {
     if (v !== 'undo' || S.active) return;
     if (tx(() => { S.workouts = S.workouts.filter(x => x.id !== snap.id); S.active = snap; S.active.last = Date.now(); })) { tab = 'train'; render(); toast('已恢复，继续训练'); }
   });
 }
+// 回到今天已结束的训练接着记（自动结束了、或者结束后又想起漏记了几组）
+const dayDiff = t => { const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(t); b.setHours(0, 0, 0, 0); return Math.round((a - b) / DAY); };
+const resumable = w => !S.active && w && w.end && dayDiff(w.start) === 0;
+A.resume = b => {
+  const w = S.workouts.find(x => x.id === b.dataset.id); if (!resumable(w)) return;
+  document.querySelectorAll('.ov').forEach(o => o.close ? o.close() : o.remove());
+  if (!tx(() => {
+    S.workouts = S.workouts.filter(x => x.id !== w.id);
+    const a = JSON.parse(JSON.stringify(w)); a.end = null; delete a.auto; a.last = Date.now(); S.active = a;
+  })) return;
+  tab = 'train'; window.scrollTo(0, 0); render(); toast('已回到这次训练，接着记');
+};
 A.addEx = b => {
   const m = b.dataset.m;
   openPicker(ex => {
@@ -445,13 +476,24 @@ A.addEx = b => {
 };
 A.exMenu = async b => {
   const c = ctx(b), n = c.w.exercises.length, name = exById(c.e.exId).name;
-  const opts = [];
+  const opts = [['换成别的动作（器械被占）', 'swap', 'pri']];
   if (c.ei > 0) opts.push(['上移', 'up']);
   if (c.ei < n - 1) opts.push(['下移', 'down']);
   opts.push(['删除这个动作', 'del', 'fill-danger'], ['取消', 'no']);
   const v = await ask(name, '', opts);
   const a = c.w.exercises;
-  if (v === 'up' || v === 'down') {
+  if (v === 'swap') {
+    const old = c.e;
+    openPicker(ex2 => {
+      const w = c.m === 'e' ? editW : S.active, i = w.exercises.indexOf(old); if (i < 0) return;
+      const fresh = { exId: ex2.id, sets: [firstSet(ex2, lastPerf(ex2.id, c.m === 'e' ? w.start : 0, w.id), c.m === 'e')] };
+      // 没做过的组直接换掉；已经做过的组留在原动作里，新动作接在它后面
+      if (!old.sets.some(s => s.done)) w.exercises[i] = fresh;
+      else { old.sets = old.sets.filter(s => s.done); renum(old); w.exercises.splice(i + 1, 0, fresh); }
+      openSet = null; commit(c.m);
+      toast(`已换成「${ex2.name}」`);
+    }, false, exById(old.exId).cat);
+  } else if (v === 'up' || v === 'down') {
     const j = c.ei + (v === 'up' ? -1 : 1); [a[c.ei], a[j]] = [a[j], a[c.ei]]; openSet = null; commit(c.m);
     const moved = document.querySelector(`.card[data-m="${c.m}"][data-ei="${j}"]`); moved && moved.scrollIntoView({ block: 'nearest' });
   } else if (v === 'del' && await confirmDanger('删除动作', `删除「${name}」及其 ${c.e.sets.length} 组记录？`)) { a.splice(c.ei, 1); openSet = null; commit(c.m); }
@@ -469,12 +511,22 @@ A.warm = b => { const c = ctx(b); if (c.s.warm) delete c.s.warm; else c.s.warm =
 A.done = b => {
   const c = ctx(b), card = b.closest('.set');
   for (const inp of card.querySelectorAll('input')) if (!applyInput(inp, true)) return;
-  c.s.done = !c.s.done; openSet = null;
-  if (c.s.done) c.s.t = Date.now(); else delete c.s.t;   // 记下每组完成的时间，用来算训练结束时间
+  c.s.done = !c.s.done; openSet = null; delete c.s.est;
+  // 记下每组完成的时间，用来算训练结束时间；编辑旧训练时不记，否则会被当成“现在”
+  if (c.s.done && c.m === 'a') c.s.t = Date.now(); else if (!c.s.done) delete c.s.t;
   if (c.s.done && c.m === 'a') startTimer(S.settings.rest);
   commit(c.m, b);
   if (c.s.done && c.m === 'a') { const t = prMap(S.active).get(c.s); if (t) toast(`🏆 新纪录！${exById(c.e.exId).name} ${t.map(x => `${x[0]} ${x[1]}（之前 ${x[2]}）`).join('，')}`); }
   if (c.s.done && c.m === 'a') { const cur = document.querySelector(`.card[data-m="a"][data-ei="${c.ei}"] .set.cur`); cur && cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+};
+// 没数：按框里预填的次数记成“约 N 次”。照样算组数和容量，但不参与次数相关的纪录和曲线
+A.est = b => {
+  const c = ctx(b), card = b.closest('.set');
+  for (const inp of card.querySelectorAll('input')) if (!applyInput(inp, true)) return;
+  c.s.done = true; c.s.est = true; openSet = null;
+  if (c.m === 'a') { c.s.t = Date.now(); startTimer(S.settings.rest); }
+  commit(c.m, b);
+  if (c.m === 'a') { const cur = document.querySelector(`.card[data-m="a"][data-ei="${c.ei}"] .set.cur`); cur && cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 };
 // 输入框：合法则写入；不合法则标红，失焦时恢复原值并提示
 function applyInput(inp, strict) {
@@ -484,7 +536,8 @@ function applyInput(inp, strict) {
     if (strict) { toast(f === 'w' ? '重量需为 0 或正数，可带小数，如 62.5' : '次数需为正整数，如 8', true); inp.value = f === 'w' ? num(c.s.w) : c.s.r; setTimeout(() => inp.classList.remove('bad'), 1500); }
     return false;
   }
-  inp.classList.remove('bad'); c.s[f] = v; if (c.m === 'a') { touchActive(); save(); }
+  // 约数组被手动改了次数，就当作数过了
+  inp.classList.remove('bad'); if (f === 'r' && c.s.est && v !== c.s.r) delete c.s.est; c.s[f] = v; if (c.m === 'a') { touchActive(); save(); }
   return true;
 }
 document.addEventListener('input', e => { if (e.target.matches('input[data-f]')) applyInput(e.target, false); });
@@ -536,18 +589,51 @@ function detailHTML(w) {
 A.restPick = () => openRestPicker();
 
 /* ========== 动作库：选择 / 管理 ========== */
-function openPicker(onPick, manage) {
-  let cat = '全部', q = '';
+// 每个动作 / 部位最近一次练的时间（只算完成的正式组）。S.workouts 按时间倒序，第一次遇到的就是最近的
+function recency() {
+  const ex = {}, cat = {};
+  for (const w of S.workouts) for (const e of w.exercises) {
+    if (!e.sets.some(s => s.done && !s.warm)) continue;
+    if (!(e.exId in ex)) ex[e.exId] = w.start;
+    const c = exById(e.exId).cat; if (c && !(c in cat)) cat[c] = w.start;
+  }
+  return { ex, cat };
+}
+const agoTxt = t => { const d = dayDiff(t); return d <= 0 ? '今天' : d === 1 ? '昨天' : d + ' 天前'; };
+const agoShort = t => { const d = dayDiff(t); return d <= 0 ? '今天' : d + '天'; };
+// “多久没练”：最久没练的部位排前面
+function gapHTML() {
+  const R = recency(); if (!Object.keys(R.cat).length) return '';
+  const rows = CATS.map(c => [c, R.cat[c]]).sort((a, b) => (a[1] || 0) - (b[1] || 0));
+  return `<div class="card"><b>多久没练</b><span class="sub">　选动作时，好久没练的排在前面</span><div class="gap">${rows.map(([c, t]) => {
+    const d = t ? dayDiff(t) : 99;
+    return `<span class="gapi ${d >= 5 ? 'old' : d <= 1 ? 'fresh' : ''}">${c}<b>${t ? agoShort(t) : '没练过'}</b></span>`;
+  }).join('')}</div></div>`;
+}
+function openPicker(onPick, manage, initCat) {
+  let cat = initCat && CATS.includes(initCat) ? initCat : '全部', q = '';
   const ov = sheet(manage ? '动作库' : '添加动作', '<button class="btn" data-x="new">＋ 新建</button>');
   ov.body.innerHTML = `<input class="txt" type="search" placeholder="搜索动作" data-x="q" autocomplete="off"><div class="chips" style="margin:10px 0" data-x="cats"></div><div data-x="list"></div>`;
   const draw = () => {
-    ov.querySelector('[data-x="cats"]').innerHTML = ['全部', ...CATS].map(c => `<button class="chip ${c === cat ? 'on' : ''}" data-cat="${c}">${c}</button>`).join('');
+    const R = recency(), inW = new Set((S.active ? S.active.exercises : []).map(e => e.exId));
+    ov.querySelector('[data-x="cats"]').innerHTML = ['全部', ...CATS].map(c => `<button class="chip ${c === cat ? 'on' : ''}" data-cat="${c}">${c}${c !== '全部' && R.cat[c] && !manage ? `<small>${agoShort(R.cat[c])}</small>` : ''}</button>`).join('');
     const list = S.exercises.filter(e => !e.deleted && (cat === '全部' || e.cat === cat) && (!q || (e.name + ' ' + (ALIAS[e.id] || '')).toLowerCase().includes(q.toLowerCase())));
     const tags = e => [e.cat, e.bw && '自重', e.timed && '计时(秒)', e.custom && '自定义'].filter(Boolean).join(' · ');
-    ov.querySelector('[data-x="list"]').innerHTML = list.length ? list.map(e => manage
-      ? `<div class="li"><div><div class="t">${esc(e.name)}</div><div class="sub">${tags(e)}</div></div><div class="exb"><button class="btn" data-edit="${e.id}">编辑</button><button class="btn danger" data-del="${e.id}">删除</button></div></div>`
-      : `<button class="li" data-pick="${e.id}"><div><div class="t">${esc(e.name)}</div><div class="sub">${tags(e)}</div></div><span class="sub">＋</span></button>`).join('')
-      : `<div class="tip">没有找到「${esc(q)}」。<button class="btn pri" style="margin-top:8px" data-x="new">新建这个动作</button></div>`;
+    const box = ov.querySelector('[data-x="list"]');
+    if (!list.length) { box.innerHTML = `<div class="tip">没有找到「${esc(q)}」。<button class="btn pri" style="margin-top:8px" data-x="new">新建这个动作</button></div>`; return; }
+    if (manage) {
+      box.innerHTML = list.map(e => `<div class="li"><div><div class="t">${esc(e.name)}</div><div class="sub">${tags(e)}</div></div><div class="exb"><button class="btn" data-edit="${e.id}">编辑</button><button class="btn danger" data-del="${e.id}">删除</button></div></div>`).join('');
+      return;
+    }
+    // 练过的按“多久没练”排：越久没练越靠前；没练过的放后面
+    const done = list.filter(e => R.ex[e.id]).sort((a, b) => R.ex[a.id] - R.ex[b.id]), never = list.filter(e => !R.ex[e.id]);
+    const item = e => {
+      const lp = R.ex[e.id] && lastPerf(e.id), ex = e;
+      const sub = lp ? `${agoTxt(lp.date)} · ${esc(lp.sets.slice(0, 4).map(s => fmtSet(ex, s)).join('，'))}` : tags(e);
+      return `<button class="li" data-pick="${e.id}"><div><div class="t">${esc(e.name)}${inW.has(e.id) ? ' <span class="tag">本次已加</span>' : ''}</div><div class="sub">${sub}</div></div><span class="sub">＋</span></button>`;
+    };
+    box.innerHTML = (done.length ? `<div class="secth">练过的 · 好久没练的在前</div>` + done.map(item).join('') : '') +
+      (never.length ? `<div class="secth">${done.length ? '还没练过' : '全部动作'}</div>` + never.map(item).join('') : '');
   };
   ov.querySelector('[data-x="q"]').addEventListener('input', e => { q = e.target.value.trim(); draw(); });
   ov.addEventListener('click', async e => {
@@ -717,7 +803,7 @@ A.hOpen = b => {
   ov.body.innerHTML = `<div class="sub">${fmtDT(w.start)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}</div>
     ${w.end && w.end - w.start > 4 * 3600000 ? `<div class="tip warn">这次记了 ${fmtDur(w.end - w.start)}，可能是忘了点「结束训练」。点下面的「编辑」可以改结束时间。</div>` : ''}
     <div class="stats"><div class="stat"><span class="sub">动作数</span><b>${st.ex}</b></div><div class="stat"><span class="sub">总组数</span><b>${st.n}</b></div><div class="stat" style="grid-column:1/-1"><span class="sub">总容量</span><b>${fmtKg(st.v)}</b></div></div>
-    ${detailHTML(w)}<div class="row2"><button class="btn" data-x="edit">编辑</button><button class="btn danger" data-x="del">删除这次训练</button></div>`;
+    ${detailHTML(w)}${resumable(w) ? `<button class="btn pri big" data-a="resume" data-id="${w.id}">继续这次训练</button>` : ''}<div class="row2" style="margin-top:10px"><button class="btn" data-x="edit">编辑</button><button class="btn danger" data-x="del">删除这次训练</button></div>`;
   ov.addEventListener('click', async e => {
     if (e.target.closest('[data-x="edit"]')) { ov.close(); openEdit(w); }
     if (e.target.closest('[data-x="del"]') && await confirmDanger('删除训练', `确定删除 ${fmtDT(w.start)} 的训练？\n删除后无法恢复。`)) {
@@ -772,7 +858,8 @@ function rEdit() {
 }
 /* ========== 个人纪录（PR） ==========
    只和这次训练之前的正式组比；第一次练的动作没有可比的，不算纪录。 */
-const addBest = (b, s) => { b = b || { w: 0, e1: 0, r: 0, r0: 0 }; return { w: Math.max(b.w, s.w), e1: Math.max(b.e1, s.w * (1 + s.r / 30)), r: Math.max(b.r, s.r), r0: s.w === 0 ? Math.max(b.r0, s.r) : b.r0 }; };
+// 约数组（没数）只参与重量纪录，不参与 1RM 和次数纪录
+const addBest = (b, s) => { b = b || { w: 0, e1: 0, r: 0, r0: 0 }; if (s.est) return { ...b, w: Math.max(b.w, s.w) }; return { w: Math.max(b.w, s.w), e1: Math.max(b.e1, s.w * (1 + s.r / 30)), r: Math.max(b.r, s.r), r0: s.w === 0 ? Math.max(b.r0, s.r) : b.r0 }; };
 function prevBest(exId, before, skipId) {
   let b = null;
   for (const w of S.workouts) {
@@ -784,6 +871,7 @@ function prevBest(exId, before, skipId) {
 // 返回这组破了哪些纪录：[[名称, 新成绩, 之前最好], ...]
 function prTypes(ex, s, b) {
   if (!b || !s.done || s.warm) return [];
+  if (s.est) return !ex.timed && s.w > 0 && s.w > b.w ? [['最大重量', num(s.w) + ' kg', num(b.w) + ' kg']] : [];
   if (ex.timed) return s.r > b.r ? [['最长时长', s.r + ' 秒', b.r + ' 秒']] : [];
   const out = [], e1 = s.w * (1 + s.r / 30);
   if (s.w > 0 && s.w > b.w) out.push(['最大重量', num(s.w) + ' kg', num(b.w) + ' kg']);
@@ -821,7 +909,9 @@ function series(exId, met) {
   const f = METRICS[met][2], out = [];
   [...S.workouts].reverse().forEach(w => {
     const sets = w.exercises.filter(e => e.exId === exId).flatMap(e => e.sets.filter(s => s.done && !s.warm));
-    if (sets.length) out.push({ t: w.start, v: num(f(sets)), sets });
+    // 1RM、次数、时长这几条曲线不用约数组，避免估计的次数把曲线拉歪
+    const use = ['e1rm', 'reps', 'tmax', 'tsum'].includes(met) ? sets.filter(s => !s.est) : sets;
+    if (use.length) out.push({ t: w.start, v: num(f(use)), sets });
   });
   return out;
 }
@@ -1109,10 +1199,12 @@ setTimeout(() => { autoEnd(); if (S.active && !document.querySelector('.ov')) to
 // 只有 https / localhost 能注册 Service Worker；双击打开本地文件时自动跳过，不影响使用
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
-  // 新版离线缓存接管后自动刷新一次，不用手动划掉重开（第一次安装时不刷新）
+  // 新版离线缓存接管后自动刷新一次；正在休息计时、开着弹窗或在打字时先不刷，等空下来再刷
   const hadCtrl = !!navigator.serviceWorker.controller;
   let reloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadCtrl || reloaded) return; reloaded = true; location.reload(); });
+  const busy = () => (S.timer && S.timer.end > Date.now() - 60000) || document.querySelector('.ov') || document.body.classList.contains('kb');
+  const tryReload = () => { if (reloaded) return; if (busy()) return setTimeout(tryReload, 3000); reloaded = true; location.reload(); };
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl) tryReload(); });
 }
 // 手动更新：清掉离线缓存后从网上重新加载。训练数据存在别处，不受影响
 A.update = async () => {
