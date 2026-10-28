@@ -194,7 +194,7 @@ canvas{display:block;width:100%;height:260px;touch-action:manipulation}
 'use strict';
 /* ========== 数据层 ========== */
 const KEY = 'gymlog_v1', VER = 1, DAY = 864e5;
-const APPVER = '10.28';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
+const APPVER = '10.28.2';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
 const CATS = ['胸', '背', '腿', '肩', '手臂', '核心'];
 const BUILTIN = [
   ['胸','杠铃卧推'],['胸','上斜杠铃卧推'],['胸','哑铃卧推'],['胸','上斜哑铃卧推'],['胸','哑铃飞鸟'],['胸','绳索夹胸'],['胸','双杠臂屈伸'],
@@ -690,7 +690,7 @@ function renderTimer() {
     else $('#timer').classList.add('alarm');
   } else {
     const txt = fmtClock(rem + 999);
-    $('#tnum').textContent = txt; $('#tlab').textContent = `组间休息 ${S.settings.rest} 秒 · 点此修改`; $('#hpill').textContent = '休息 ' + txt;
+    $('#tnum').textContent = txt; $('#tlab').textContent = soundMode() === 'bg' && !armed() ? '提示音被打断了 · 点一下屏幕恢复' : `组间休息 ${S.settings.rest} 秒 · 点此修改`; $('#hpill').textContent = '休息 ' + txt;
     $('#tprog').style.width = Math.min(100, (1 - rem / (t.end - t.start)) * 100) + '%'; $('#tskip').textContent = '跳过';
   }
 }
@@ -716,73 +716,100 @@ function openRestPicker() {
 /* 提示音的三种方式（设置里可切换）：
    bg  ：完成一组时开始播放一段“静音 + 结尾提示音”的音频。它作为媒体播放，锁屏、切到别的 App
          时也会继续播，并且不受侧边静音开关影响；代价是会暂停你正在放的音乐。
+         如果别的 App 出声把它打断了，回到本工具点一下屏幕就会按剩余时间重新接上。
    mix ：只在打开本工具时用 Web Audio 响一下，不打断音乐；静音开关打开时听不到。
    off ：不出声，只闪屏。 */
 const soundMode = () => S.settings.sound || 'bg';
 function applyAudioSession() { try { if ('audioSession' in navigator) navigator.audioSession.type = soundMode() === 'mix' ? 'ambient' : 'playback'; } catch (e) {} }
-const BEEPS = [0, .3, .6, 1.2, 1.5, 1.8, 2.6, 2.9, 3.2];
-// 生成 8kHz 8bit 单声道 WAV：前 sec 秒静音，结尾三连响三次
-function makeWav(sec) {
-  const sr = 8000, n = Math.round(sr * (sec + 3.6)), buf = new ArrayBuffer(44 + n), v = new DataView(buf);
-  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true);
-  v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, 'data'); v.setUint32(40, n, true);
-  const d = new Uint8Array(buf, 44); d.fill(128);
-  const s0 = Math.round(sr * sec);
-  BEEPS.forEach((o, k) => {
-    const st = s0 + Math.round(o * sr), len = Math.round(.22 * sr), per = sr / (k % 3 === 2 ? 1320 : 880);
-    for (let i = 0; i < len && st + i < n; i++) d[st + i] = 128 + ((i % per) < per / 2 ? 90 : -90);
+// 柔和的「叮—咚」：A5→F5 两个音，正弦基音加少量泛音，敲下去后自然衰减，连响两遍
+const CHIME = [[0, 880], [.48, 698.46], [1.6, 880], [2.08, 698.46]], CHIME_LEN = 3.8, chimeCache = {};
+function chimeData(sr) {
+  if (chimeCache[sr]) return chimeCache[sr];
+  const n = Math.round(sr * CHIME_LEN), d = new Float32Array(n), P = 2 * Math.PI;
+  CHIME.forEach(([o, f]) => {
+    const st = Math.round(o * sr);
+    for (let i = 0; st + i < n; i++) {
+      const t = i / sr;
+      d[st + i] += Math.min(1, t / .005) * (Math.exp(-t / .6) * Math.sin(P * f * t)
+        + .3 * Math.exp(-t / .3) * Math.sin(P * 2 * f * t) + .08 * Math.exp(-t / .15) * Math.sin(P * 3 * f * t));
+    }
   });
+  let pk = 0; for (let i = 0; i < n; i++) pk = Math.max(pk, Math.abs(d[i]));
+  const fade = Math.round(sr * .3);
+  for (let i = 0; i < n; i++) d[i] *= .85 / pk * Math.min(1, (n - i) / fade);
+  return chimeCache[sr] = d;
+}
+// 生成 16bit 单声道 WAV：前 sec 秒静音，结尾是提示音（休息很长时降采样，控制文件大小）
+function makeWav(sec) {
+  const sr = sec > 300 ? 8000 : 16000, c = chimeData(sr), s0 = Math.round(sr * sec), n = s0 + c.length;
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < c.length; i++) v.setInt16(44 + (s0 + i) * 2, Math.round(c[i] * 32767), true);
   return new Blob([buf], { type: 'audio/wav' });
 }
 let RA = null, RAurl = null;
-// 必须在点击里调用（iOS 只允许用户点击触发播放）；sec<=0 表示停止
-function restAudio(sec) {
+// 音频正在播（或已经播完，提示音已经响过）
+const armed = () => !!(RA && RAurl && (!RA.paused || RA.ended));
+// 必须在点击里调用（iOS 只允许用户点击触发播放）；sec<=0 表示停止；quiet 时被拦截不弹提示
+function restAudio(sec, quiet) {
   if (RA) { RA.pause(); RA.removeAttribute('src'); RA.load(); }
   if (RAurl) { URL.revokeObjectURL(RAurl); RAurl = null; }
-  if (sec <= 0 || soundMode() !== 'bg') { if ('mediaSession' in navigator) navigator.mediaSession.metadata = null; return; }
-  if (!RA) { RA = new Audio(); RA.preload = 'auto'; RA.setAttribute('playsinline', ''); }
-  RAurl = URL.createObjectURL(makeWav(Math.min(900, Math.max(1, sec))));
+  if (sec <= 0 || soundMode() !== 'bg') { if ('mediaSession' in navigator) navigator.mediaSession.metadata = null; return Promise.resolve(true); }
+  if (!RA) {
+    RA = new Audio(); RA.preload = 'auto'; RA.setAttribute('playsinline', '');
+    RA.addEventListener('pause', () => { if (S.timer) renderTimer(); });
+    // 在锁屏播放器上点了暂停又点播放：按剩余时间重新开始，免得提示音推迟
+    try { navigator.mediaSession.setActionHandler('play', () => { const t = S.timer; if (t && t.end - Date.now() > 1500) restAudio((t.end - Date.now()) / 1000, true); }); } catch (e) {}
+  }
+  RAurl = URL.createObjectURL(makeWav(Math.min(900, Math.max(.05, sec))));
   RA.src = RAurl;
-  const p = RA.play(); if (p && p.catch) p.catch(() => toast('提示音被系统拦截了，时间到时只会闪屏', true));
+  let p = RA.play(); if (!p || !p.then) p = Promise.resolve();
+  p = p.then(() => true, () => { if (!quiet) toast('提示音被系统拦截了，时间到时只会闪屏', true); renderTimer(); return false; });
   try { if ('mediaSession' in navigator && window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title: '组间休息 ' + Math.round(sec) + ' 秒', artist: '练习记录' }); } catch (e) {}
+  return p;
+}
+// 被打断（别的 App 出声、页面被系统重载、拔了耳机）后，按剩余时间重新接上
+function rearm() {
+  const t = S.timer; if (!t || soundMode() !== 'bg' || armed()) return;
+  const rem = t.end - Date.now(); if (rem > 1500) restAudio(rem / 1000, true);
 }
 
-// Web Audio（不打断音乐模式用）：iOS 必须在用户手势里先解锁一次
+// Web Audio：不打断音乐模式用，也是锁屏模式在前台时的备用；iOS 必须在用户手势里先解锁一次
 let AC = null;
 function unlockAudio() {
-  if (soundMode() !== 'mix') return;
+  if (soundMode() === 'off') return;
   try {
     if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; AC = new C(); }
     if (AC.state !== 'running') { AC.resume(); const b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(0); }
   } catch (e) {}
 }
-['touchend', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true, capture: true }));
-function beep() {
+['touchend', 'click'].forEach(ev => document.addEventListener(ev, () => { unlockAudio(); rearm(); }, { passive: true, capture: true }));
+function chimeAC() {
   if (!AC) return;
   try {
-    AC.resume(); const t0 = AC.currentTime + 0.05;
-    BEEPS.forEach((d, i) => {
-      const o = AC.createOscillator(), g = AC.createGain();
-      o.type = 'square'; o.frequency.value = i % 3 === 2 ? 1320 : 880;
-      g.gain.setValueAtTime(0.0001, t0 + d); g.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.25);
-      o.connect(g); g.connect(AC.destination); o.start(t0 + d); o.stop(t0 + d + 0.27);
-    });
+    AC.resume(); const c = chimeData(AC.sampleRate), b = AC.createBuffer(1, c.length, AC.sampleRate);
+    b.getChannelData(0).set(c);
+    const s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(AC.currentTime + .05);
   } catch (e) {}
 }
 function alarm(sound) {
   $('#timer').classList.add('alarm');
   const f = $('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
-  if (sound && soundMode() === 'mix') beep();   // bg 模式下提示音已经在音频结尾里
+  if (!sound || soundMode() === 'off') return;
+  if (soundMode() === 'mix') return chimeAC();
+  if (armed()) return;                                  // 音频结尾自己会响（或已经响过）
+  restAudio(.05, true).then(ok => ok || chimeAC());                 // 音频被打断过：现在补响
 }
 function alarmOff() { $('#timer').classList.remove('alarm'); $('#flash').classList.remove('go'); }
-A.sound = b => { S.settings.sound = b.dataset.k; save(); applyAudioSession(); if (S.timer) restAudio(soundMode() === 'bg' ? (S.timer.end - Date.now()) / 1000 : 0); rSet(); };
+A.sound = b => { S.settings.sound = b.dataset.k; save(); applyAudioSession(); unlockAudio(); if (S.timer) restAudio(soundMode() === 'bg' ? (S.timer.end - Date.now()) / 1000 : 0); rSet(); };
 A.testSound = () => {
   const m = soundMode();
   if (m === 'off') return toast('当前是「只闪屏」，不会出声');
   if (m === 'bg') { if (S.timer) return toast('正在休息计时，等这次结束后再试'); restAudio(5); toast('5 秒后响。现在可以锁屏或切到别的 App 试试'); }
-  else { unlockAudio(); setTimeout(beep, 300); toast('如果静音开关开着，这个模式听不到'); }
+  else { unlockAudio(); setTimeout(chimeAC, 300); toast('如果静音开关开着，这个模式听不到'); }
 };
 
 /* ========== 历史记录 ========== */
@@ -1176,7 +1203,7 @@ function render() {
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b && !b.disabled && A[b.dataset.a]) A[b.dataset.a](b, e); });
 setInterval(() => { if (S.timer) renderTimer(); updElapsed(); autoEnd(); }, 500);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (AC) AC.resume().catch(() => {}); renderTimer(); updElapsed(); setTimeout(autoEnd, 400); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (AC) AC.resume().catch(() => {}); rearm(); renderTimer(); updElapsed(); setTimeout(autoEnd, 400); } });
 window.addEventListener('pageshow', () => { renderTimer(); updElapsed(); });
 // 运行时生成主屏幕图标（PNG data URL，不依赖外部文件）
 (function icon() {
