@@ -30,9 +30,9 @@
 ## 截图
 
 <p align="center">
-  <img src="docs/train.png" width="30%" alt="记录训练">&nbsp;
-  <img src="docs/pick.png" width="30%" alt="按多久没练选动作">&nbsp;
-  <img src="docs/progress.png" width="30%" alt="进步曲线">
+  <img src="docs/train.svg" width="30%" alt="记录训练">&nbsp;
+  <img src="docs/pick.svg" width="30%" alt="按多久没练选动作">&nbsp;
+  <img src="docs/progress.svg" width="30%" alt="进步曲线">
 </p>
 
 ## 它替你做的事
