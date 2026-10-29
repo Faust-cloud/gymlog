@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <defs>
+    <clipPath id="s"><rect width="390" height="844" rx="44"/></clipPath>
+    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d9bff" stop-opacity=".28"/><stop offset="1" stop-color="#3d9bff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <g clip-path="url(#s)" font-family="-apple-system, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <rect width="390" height="844" fill="#000"/>
+    <text x="34" y="34" fill="#f5f5f7" font-size="15" font-weight="600">21:18</text>
+    <rect x="336" y="22" width="26" height="12" rx="3.5" fill="none" stroke="#f5f5f7" stroke-opacity=".5"/><rect x="338" y="24" width="18" height="8" rx="2" fill="#f5f5f7"/>
+
+    <text x="16" y="88" fill="#f5f5f7" font-size="28" font-weight="700">进步</text>
+
+    <rect x="16" y="108" width="358" height="48" rx="12" fill="#17171b"/>
+    <text x="32" y="138" fill="#f5f5f7" font-size="17" font-weight="600">杠铃卧推</text>
+    <path d="M346 128l6 6 6-6" stroke="#a8a8b3" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="16" y="168" width="358" height="40" rx="11" fill="#26262d"/>
+    <rect x="20" y="172" width="116" height="32" rx="8" fill="#3a3a44"/>
+    <g font-size="14" font-weight="600" text-anchor="middle">
+      <text x="78" y="193" fill="#f5f5f7">最大重量</text>
+      <text x="195" y="193" fill="#a8a8b3">估算 1RM</text>
+      <text x="314" y="193" fill="#a8a8b3">总容量</text>
+    </g>
+
+    <!-- chart card -->
+    <rect x="16" y="220" width="358" height="330" rx="16" fill="#17171b"/>
+    <g font-size="11" fill="#a8a8b3" text-anchor="end">
+      <text x="52" y="270">70</text><text x="52" y="350">60</text><text x="52" y="430">50</text><text x="52" y="510">40</text>
+    </g>
+    <g stroke="#26262d"><path d="M62 266H356M62 346H356M62 426H356M62 506H356"/></g>
+    <path d="M70 482 L104 466 L138 458 L172 434 L206 426 L240 402 L274 386 L308 366 L342 346 L342 506 L70 506Z" fill="url(#fill)"/>
+    <path d="M70 482 L104 466 L138 458 L172 434 L206 426 L240 402 L274 386 L308 366 L342 346" fill="none" stroke="#3d9bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="#17171b" stroke="#3d9bff" stroke-width="2.5">
+      <circle cx="70" cy="482" r="4.5"/><circle cx="104" cy="466" r="4.5"/><circle cx="138" cy="458" r="4.5"/><circle cx="172" cy="434" r="4.5"/><circle cx="206" cy="426" r="4.5"/><circle cx="240" cy="402" r="4.5"/><circle cx="274" cy="386" r="4.5"/><circle cx="308" cy="366" r="4.5"/>
+    </g>
+    <circle cx="342" cy="346" r="7" fill="#3d9bff"/>
+    <rect x="236" y="290" width="118" height="42" rx="10" fill="#26262d"/>
+    <text x="250" y="308" fill="#a8a8b3" font-size="11">10月28日</text>
+    <text x="250" y="325" fill="#f5f5f7" font-size="14" font-weight="700">65 kg × 8</text>
+    <path d="M342 332v8" stroke="#3a3a44" stroke-width="2"/>
+    <g font-size="11" fill="#a8a8b3" text-anchor="middle">
+      <text x="70" y="532">9/02</text><text x="206" y="532">9/30</text><text x="342" y="532">10/28</text>
+    </g>
+
+    <!-- stats -->
+    <g>
+      <rect x="16" y="562" width="114" height="76" rx="14" fill="#17171b"/>
+      <text x="30" y="588" fill="#a8a8b3" font-size="12">最大重量</text>
+      <text x="30" y="620" fill="#f5f5f7" font-size="24" font-weight="700">65<tspan font-size="14" fill="#a8a8b3"> kg</tspan></text>
+      <rect x="138" y="562" width="114" height="76" rx="14" fill="#17171b"/>
+      <text x="152" y="588" fill="#a8a8b3" font-size="12">训练次数</text>
+      <text x="152" y="620" fill="#f5f5f7" font-size="24" font-weight="700">9</text>
+      <rect x="260" y="562" width="114" height="76" rx="14" fill="#17171b"/>
+      <text x="274" y="588" fill="#a8a8b3" font-size="12">较第一次</text>
+      <text x="274" y="620" fill="#36c96d" font-size="24" font-weight="700">+20<tspan font-size="14"> kg</tspan></text>
+    </g>
+
+    <rect x="16" y="650" width="358" height="84" rx="14" fill="#17171b"/>
+    <text x="32" y="678" fill="#f5f5f7" font-size="15" font-weight="700">🏆 纪录</text>
+    <text x="32" y="704" fill="#a8a8b3" font-size="13">最大重量 65 kg · 10月28日</text>
+    <text x="32" y="722" fill="#a8a8b3" font-size="13">估算 1RM 82.3 kg · 10月28日</text>
+
+    <!-- tab -->
+    <rect y="752" width="390" height="92" fill="#17171b"/>
+    <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" font-size="11" font-weight="600" text-anchor="middle">
+      <g transform="translate(27 762)" stroke="#a8a8b3"><path d="M6 6v12M18 6v12M3 9.5v5M21 9.5v5M6 12h12"/></g><text x="39" y="802" fill="#a8a8b3" stroke="none">训练</text>
+      <g transform="translate(105 762)" stroke="#a8a8b3"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></g><text x="117" y="802" fill="#a8a8b3" stroke="none">历史</text>
+      <g transform="translate(183 762)" stroke="#3d9bff"><path d="M4 20h16M5 16l4.5-4.5 3.5 3 6-7"/></g><text x="195" y="802" fill="#3d9bff" stroke="none">进步</text>
+      <g transform="translate(261 762)" stroke="#a8a8b3"><path d="M4 20V10M10 20V4M16 20v-7M20 20H2"/></g><text x="273" y="802" fill="#a8a8b3" stroke="none">统计</text>
+      <g transform="translate(339 762)" stroke="#a8a8b3"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></g><text x="351" y="802" fill="#a8a8b3" stroke="none">设置</text>
+    </g>
+    <rect x="128" y="828" width="134" height="5" rx="2.5" fill="#f5f5f7"/>
+  </g>
+  <rect x=".5" y=".5" width="389" height="843" rx="43.5" fill="none" stroke="#3a3a44"/>
+</svg>
