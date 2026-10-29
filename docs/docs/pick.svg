@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <defs><clipPath id="s"><rect width="390" height="844" rx="44"/></clipPath></defs>
+  <g clip-path="url(#s)" font-family="-apple-system, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <rect width="390" height="844" fill="#000"/>
+    <text x="34" y="34" fill="#f5f5f7" font-size="15" font-weight="600">17:05</text>
+    <rect x="336" y="22" width="26" height="12" rx="3.5" fill="none" stroke="#f5f5f7" stroke-opacity=".5"/><rect x="338" y="24" width="18" height="8" rx="2" fill="#f5f5f7"/>
+
+    <!-- 底下被遮住的首页 -->
+    <rect y="48" width="390" height="796" fill="#000"/>
+    <rect width="390" height="844" fill="#000" fill-opacity=".55"/>
+
+    <!-- sheet -->
+    <rect y="72" width="390" height="800" rx="22" fill="#17171b"/>
+    <rect x="171" y="80" width="48" height="5" rx="2.5" fill="#3a3a44"/>
+    <text x="20" y="124" fill="#f5f5f7" font-size="22" font-weight="700">添加动作</text>
+    <rect x="290" y="102" width="80" height="34" rx="10" fill="#26262d"/><text x="330" y="124" fill="#3d9bff" font-size="15" font-weight="600" text-anchor="middle">＋ 新建</text>
+
+    <rect x="16" y="146" width="358" height="42" rx="12" fill="#26262d"/>
+    <text x="34" y="173" fill="#a8a8b3" font-size="16">搜索动作</text>
+
+    <!-- 部位 chips -->
+    <g font-size="14" font-weight="600" text-anchor="middle">
+      <rect x="16" y="200" width="54" height="34" rx="17" fill="#26262d"/><text x="43" y="222" fill="#a8a8b3">全部</text>
+      <rect x="78" y="200" width="44" height="34" rx="17" fill="#26262d"/><text x="100" y="222" fill="#a8a8b3">胸</text>
+      <rect x="130" y="200" width="44" height="34" rx="17" fill="#26262d"/><text x="152" y="222" fill="#a8a8b3">背</text>
+      <rect x="182" y="200" width="44" height="34" rx="17" fill="#3d9bff"/><text x="204" y="222" fill="#fff">腿</text>
+      <rect x="234" y="200" width="44" height="34" rx="17" fill="#26262d"/><text x="256" y="222" fill="#a8a8b3">肩</text>
+      <rect x="286" y="200" width="44" height="34" rx="17" fill="#26262d"/><text x="308" y="222" fill="#a8a8b3">臂</text>
+      <rect x="338" y="200" width="56" height="34" rx="17" fill="#26262d"/><text x="366" y="222" fill="#a8a8b3">核心</text>
+    </g>
+
+    <text x="20" y="268" fill="#a8a8b3" font-size="13" font-weight="600">练过的 · 好久没练的在前</text>
+
+    <g font-size="17">
+      <line x1="20" y1="282" x2="370" y2="282" stroke="#26262d"/>
+      <text x="20" y="314" fill="#f5f5f7">杠铃深蹲</text>
+      <text x="20" y="334" fill="#a8a8b3" font-size="13">上次 80 × 6</text>
+      <rect x="292" y="304" width="78" height="26" rx="13" fill="#ffb340" fill-opacity=".16"/><text x="331" y="322" fill="#ffb340" font-size="13" font-weight="600" text-anchor="middle">12 天前</text>
+
+      <line x1="20" y1="350" x2="370" y2="350" stroke="#26262d"/>
+      <text x="20" y="382" fill="#f5f5f7">罗马尼亚硬拉</text>
+      <text x="20" y="402" fill="#a8a8b3" font-size="13">上次 70 × 8</text>
+      <rect x="292" y="372" width="78" height="26" rx="13" fill="#ffb340" fill-opacity=".16"/><text x="331" y="390" fill="#ffb340" font-size="13" font-weight="600" text-anchor="middle">12 天前</text>
+
+      <line x1="20" y1="418" x2="370" y2="418" stroke="#26262d"/>
+      <text x="20" y="450" fill="#f5f5f7">腿举</text>
+      <text x="20" y="470" fill="#a8a8b3" font-size="13">上次 140 × 10</text>
+      <rect x="300" y="440" width="70" height="26" rx="13" fill="#26262d"/><text x="335" y="458" fill="#a8a8b3" font-size="13" font-weight="600" text-anchor="middle">6 天前</text>
+
+      <line x1="20" y1="486" x2="370" y2="486" stroke="#26262d"/>
+      <text x="20" y="518" fill="#f5f5f7">坐姿腿屈伸</text>
+      <text x="20" y="538" fill="#a8a8b3" font-size="13">上次 45 × 12</text>
+      <rect x="300" y="508" width="70" height="26" rx="13" fill="#26262d"/><text x="335" y="526" fill="#a8a8b3" font-size="13" font-weight="600" text-anchor="middle">6 天前</text>
+
+      <line x1="20" y1="554" x2="370" y2="554" stroke="#26262d"/>
+      <text x="20" y="586" fill="#f5f5f7">保加利亚分腿蹲</text>
+      <text x="20" y="606" fill="#a8a8b3" font-size="13">上次 12.5 × 10</text>
+      <rect x="300" y="576" width="70" height="26" rx="13" fill="#26262d"/><text x="335" y="594" fill="#a8a8b3" font-size="13" font-weight="600" text-anchor="middle">2 天前</text>
+    </g>
+
+    <text x="20" y="650" fill="#a8a8b3" font-size="13" font-weight="600">还没练过</text>
+    <g font-size="17" fill="#f5f5f7">
+      <line x1="20" y1="664" x2="370" y2="664" stroke="#26262d"/>
+      <text x="20" y="700">哈克深蹲</text>
+      <line x1="20" y1="722" x2="370" y2="722" stroke="#26262d"/>
+      <text x="20" y="758">坐姿腿弯举</text>
+      <line x1="20" y1="780" x2="370" y2="780" stroke="#26262d"/>
+      <text x="20" y="816">臀推</text>
+    </g>
+  </g>
+  <rect x=".5" y=".5" width="389" height="843" rx="43.5" fill="none" stroke="#3a3a44"/>
+</svg>
