@@ -167,6 +167,24 @@ canvas{display:block;width:100%;height:260px;touch-action:manipulation}
 .wkfill i{width:100%;background:var(--acc);border-radius:5px 5px 2px 2px;min-height:2px}
 html[lang=en] .catname{width:78px}html[lang=en] .catnum{width:60px}
 .wknum,.wklab{font-size:10px;color:var(--sub);white-space:nowrap;font-variant-numeric:tabular-nums;height:13px;line-height:13px}
+/* 有氧间歇：全屏显示，骑车时扫一眼就知道该冲还是该歇；颜色跟着阶段变 */
+.card.cardio{border-left:4px solid var(--acc)}
+.cgoal{display:block;height:8px;border-radius:4px;background:var(--card2);overflow:hidden;margin:8px 0 4px}
+.cgoal i{display:block;height:100%;background:var(--acc);transform-origin:left;transition:transform .6s ease-out}
+.ivov{align-items:stretch;background:var(--bg);transition:background .4s}
+.ivov.hard{background:#c2261b;color:#fff}.ivov.easy{background:#11713a;color:#fff}.ivov.warm{background:#0a4fb3;color:#fff}.ivov.paused{background:#3a3a44;color:#fff}
+.ivbox{flex:1;display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px)}
+.ivtop{display:flex;justify-content:space-between;align-items:center;font-size:16px;opacity:.9;font-variant-numeric:tabular-nums}
+.ivmid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
+.ivph{font-size:40px;font-weight:800;letter-spacing:2px}
+.ivnum{font-size:min(30vw,150px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.ivhint{font-size:18px;opacity:.9;max-width:320px}
+.ivrnd{font-size:20px;font-weight:700;margin-top:10px;min-height:26px}
+.ivnext{font-size:16px;opacity:.8}
+.ivbar{height:8px;border-radius:4px;background:rgba(255,255,255,.25);overflow:hidden;margin:12px 0}
+.ivbar i{display:block;height:100%;background:#fff;transform:scaleX(0);transform-origin:left}
+.ivbts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.ivbts .btn{min-height:60px;font-size:17px;background:rgba(255,255,255,.18);color:inherit;border-color:transparent}
 </style>
 </head>
 <body>
@@ -195,7 +213,7 @@ html[lang=en] .catname{width:78px}html[lang=en] .catnum{width:60px}
 'use strict';
 /* ========== 数据层 ========== */
 const KEY = 'gymlog_v1', VER = 1, DAY = 864e5;
-const APPVER = '11.03.2';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
+const APPVER = '11.22.2';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
 /* 界面语言：默认跟随系统，设置里可以改（改完刷新页面）。
    存在单独的 key 里，不进备份；数据里的部位、内置动作名仍然存中文，只在显示时翻译 */
 const LANG_KEY = 'gymlog_lang';
@@ -215,7 +233,9 @@ const BUILTIN = [
   // 10/27 新增（只能往后加：编号 b34 起按顺序生成，插在中间会让已有记录对不上动作）
   ['手臂','仰卧臂屈伸'],['肩','Y字侧平举'],
   ['背','单手绳索下拉'],['背','单手器械划船'],['背','对握下拉'],['背','开肘划船'],['手臂','绳索弯举'],
-  ['腿','单腿硬拉'],['腿','保加利亚分腿蹲'],['腿','高脚杯深蹲'],['腿','山羊挺身']
+  ['腿','单腿硬拉'],['腿','保加利亚分腿蹲'],['腿','高脚杯深蹲'],['腿','山羊挺身'],
+  // 11/22 新增
+  ['核心','单手农夫行走']
 ];
 // 和 BUILTIN 一一对应的英文名
 const BUILTIN_EN = [
@@ -227,17 +247,19 @@ const BUILTIN_EN = [
   'Crunch', 'Hanging Leg Raise', 'Plank',
   'Lying Triceps Extension', 'Y-Raise',
   'Single-arm Cable Pulldown', 'Single-arm Machine Row', 'Neutral-grip Pulldown', 'Wide-elbow Row', 'Cable Curl',
-  'Single-leg Deadlift', 'Bulgarian Split Squat', 'Goblet Squat', 'Back Extension'
+  'Single-leg Deadlift', 'Bulgarian Split Squat', 'Goblet Squat', 'Back Extension',
+  'One-arm Farmer’s Carry'
 ];
 // 显示用的动作名：内置动作没被改过名时显示英文，自建的和改过名的照原样
 const exName = ex => { const i = EN && !ex.custom && /^b\d+$/.test(ex.id || '') ? +ex.id.slice(1) - 1 : -1; return i >= 0 && BUILTIN[i] && ex.name === BUILTIN[i][1] ? BUILTIN_EN[i] : ex.name; };
+const TIMED = new Set(['平板支撑', '单手农夫行走']);
 const BW = new Set(['双杠臂屈伸', '引体向上', '卷腹', '悬垂举腿', '平板支撑', '山羊挺身']);
 // 同一个动作的其他叫法：搜索时也能搜到
 const ALIAS = { b4: '哑铃上斜卧推', b12: '单手哑铃划船', b16: '杠铃罗马尼亚硬拉 RDL', b25: '后束', b34: '碎颅者', b36: '单臂绳索下拉', b37: '单臂器械划船', b39: '后束 宽握划船', b42: '保加利亚单腿蹲' };
 // 新内置动作如果用户已经自建过（同名或常见别名），就不再重复添加
 const SAME = { '保加利亚分腿蹲': ['保加利亚单腿蹲', '保加利亚蹲'], '仰卧臂屈伸': ['仰卧臂屈伸（哑铃）', '碎颅者'], '高脚杯深蹲': ['高脚杯蹲'] };
-const builtins = () => BUILTIN.map(([cat, name], i) => ({ id: 'b' + (i + 1), name, cat, bw: BW.has(name), timed: name === '平板支撑', custom: false }));
-const defState = () => ({ version: VER, exercises: builtins(), workouts: [], active: null, timer: null, settings: { rest: 90, lastBackup: null, sound: 'bg' } });
+const builtins = () => BUILTIN.map(([cat, name], i) => ({ id: 'b' + (i + 1), name, cat, bw: BW.has(name), timed: TIMED.has(name), custom: false }));
+const defState = () => ({ version: VER, exercises: builtins(), workouts: [], active: null, timer: null, iv: null, settings: { rest: 90, lastBackup: null, sound: 'bg' } });
 
 // 以后升级数据结构时在这里按 version 逐级迁移
 function migrate(d) {
@@ -253,6 +275,7 @@ function migrate(d) {
   if (Array.isArray(d.workouts)) s.workouts = d.workouts;
   s.active = d.active || null;
   s.timer = d.timer || null;
+  s.iv = d.iv && IV[d.iv.kind] && IV[d.iv.kind].plan ? d.iv : null;
   s.settings = Object.assign(s.settings, d.settings || {});
   s.version = VER;
   return s;
@@ -364,15 +387,15 @@ function rTrain() {
     if (!S.workouts.length)
       h += L(`<div class="tip"><b>👋 欢迎！三步开始记录：</b><ol><li>点下面的「开始训练」</li><li>点「＋ 添加动作」，选部位再选动作，逐组填重量和次数</li><li>每做完一组点「完成 ✓」，会自动开始组间休息倒计时</li></ol><div class="sub" style="margin-top:8px">练完点「结束训练」查看总结。建议先在 Safari 分享菜单里「添加到主屏幕」，以后都从主屏幕图标打开。</div></div>`,
         `<div class="tip"><b>👋 Welcome! Three steps to start:</b><ol><li>Tap “Start workout” below</li><li>Tap “＋ Add exercise”, pick one, then fill in weight and reps for each set</li><li>Tap “Done ✓” after each set and the rest timer starts</li></ol><div class="sub" style="margin-top:8px">Tap “Finish” when you’re done to see a summary. Tip: in Safari, Share → “Add to Home Screen”, and always open it from the icon.</div></div>`);
-    h += `<button class="btn pri big" data-a="start">${L('开始训练', 'Start workout')}</button>`;
+    h += `<button class="btn pri big" data-a="start">${L('开始训练', 'Start workout')}</button><button class="btn big" data-a="cardio">${L('只练有氧', 'Cardio only')}</button>`;
     const last = S.workouts[0];
     if (resumable(last)) h = `<div class="tip"><b>${last.auto ? L(`今天这次训练在 ${clockOf(last.end)} 自动结束了`, `Today’s workout auto-finished at ${clockOf(last.end)}`) : L('今天已经练过一次', 'You already trained today')}</b><div class="sub" style="margin:4px 0 8px">${L('还在练、或者漏记了几组？回到这次训练接着记，不会多出一条记录。', 'Still going, or forgot a few sets? Pick it back up. No duplicate entry.')}</div><button class="btn pri" data-a="resume" data-id="${last.id}">${L('继续这次训练', 'Resume this workout')}</button></div>` + h.replace('btn pri big', 'btn big');
     h += gapHTML();
-    if (last) { const st = stats(last); h += `<h2>${L('上次训练', 'Last workout')}</h2><button class="li" data-a="hOpen" data-id="${last.id}"><div><div class="t">${fmtDT(last.start)}</div><div class="sub">${esc(last.exercises.map(e => exName(exById(e.exId))).join(LIST_SEP))}</div><div class="sub">${setsTxt(st.n)} · ${fmtKg(st.v)}</div></div><span class="sub">›</span></button>`; }
+    if (last) { const st = stats(last); h += `<h2>${L('上次训练', 'Last workout')}</h2><button class="li" data-a="hOpen" data-id="${last.id}"><div><div class="t">${fmtDT(last.start)}</div><div class="sub">${esc(wNames(last))}</div><div class="sub">${wSum(last)}</div></div><span class="sub">›</span></button>`; }
     m.innerHTML = h; $('#hdr').textContent = ''; return;
   }
-  m.innerHTML = editorHTML(w, 'a') +
-    `<button class="btn big" data-a="addEx" data-m="a">${L('＋ 添加动作', '＋ Add exercise')}</button>
+  m.innerHTML = editorHTML(w, 'a') + cardioHTML(w, 'a') +
+    `<div class="row2"><button class="btn big" data-a="addEx" data-m="a">${L('＋ 添加动作', '＋ Add exercise')}</button><button class="btn big" data-a="cardio" data-m="a">${L('＋ 有氧', '＋ Cardio')}</button></div>
      <div class="row2" style="margin-top:10px"><button class="btn danger" data-a="restPick">${L(`休息 ${S.settings.rest} 秒 ▾`, `Rest ${S.settings.rest}s ▾`)}</button><button class="btn pri" data-a="finish">${L('结束训练', 'Finish')}</button></div>`;
   updElapsed();
 }
@@ -385,7 +408,7 @@ function updElapsed() {
 }
 
 function editorHTML(w, m) {
-  if (!w.exercises.length) return `<div class="tip" data-m="${m}">${L('还没有动作，点「＋ 添加动作」开始。', 'No exercises yet. Tap “＋ Add exercise” to begin.')}</div>`;
+  if (!w.exercises.length) return (w.cardio && w.cardio.length) ? '' : `<div class="tip" data-m="${m}">${L('还没有动作，点「＋ 添加动作」开始。', 'No exercises yet. Tap “＋ Add exercise” to begin.')}</div>`;
   const prs = prMap(w);
   return w.exercises.map((e, ei) => {
     const ex = exById(e.exId), lp = lastPerf(e.exId, m === 'e' ? w.start : 0, w.id);
@@ -451,7 +474,7 @@ const idleMin = () => (S.settings.idleMin === undefined ? 10 : S.settings.idleMi
 const idleLimit = () => idleMin() ? idleMin() * 60000 : Infinity;
 const touchActive = () => { if (S.active) S.active.last = Date.now(); };
 const lastAct = w => w.last || w.start;
-const lastDone = w => Math.max(0, ...w.exercises.flatMap(e => e.sets.map(s => s.t || 0)));
+const lastDone = w => Math.max(0, ...w.exercises.flatMap(e => e.sets.map(s => s.t || 0)), ...(w.cardio || []).map(c => c.end));
 // 结束时间：停了很久就用最后一组的完成时间；旧版本记的训练没有时间信息，按每组约 3 分钟估算
 function endTime(w) {
   const now = Date.now();
@@ -467,7 +490,7 @@ const fmtAgo = ms => { const m = Math.floor(ms / 60000); return m >= 60 ? L(`${M
 function autoEnd() {
   const w = S.active;
   if (!w || document.hidden || document.querySelector('.ov') || document.body.classList.contains('kb')) return;
-  if (S.timer && S.timer.end > Date.now()) return;           // 还在组间休息，不算没动静
+  if (S.iv || (S.timer && S.timer.end > Date.now())) return;   // 还在组间休息或做有氧，不算没动静
   const idle = Date.now() - lastAct(w);
   if (idle < idleLimit()) return;
   const snap = JSON.parse(JSON.stringify(w)), estimated = !lastDone(w) && !w.last;
@@ -475,7 +498,7 @@ function autoEnd() {
   saved.exercises.forEach(e => { e.sets = e.sets.filter(s => s.done); renum(e); });
   saved.exercises = saved.exercises.filter(e => e.sets.length);
   saved.end = endTime(w); delete saved.last; saved.auto = true;
-  const keep = saved.exercises.length > 0;
+  const keep = saved.exercises.length > 0 || !!(saved.cardio && saved.cardio.length);
   if (!tx(() => { if (keep) { S.workouts.push(saved); sortW(); } S.active = null; S.timer = null; })) return;
   restAudio(0); alarmOff(); openSet = null; render();
   const msg = keep
@@ -489,7 +512,8 @@ function autoEnd() {
 }
 // 回到今天已结束的训练接着记（自动结束了、或者结束后又想起漏记了几组）
 const dayDiff = t => { const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(t); b.setHours(0, 0, 0, 0); return Math.round((a - b) / DAY); };
-const resumable = w => !S.active && w && w.end && dayDiff(w.start) === 0;
+// 当天的，或者刚结束不到 3 小时的（晚上练到过了零点也能接着记）
+const resumable = w => !S.active && w && w.end && (dayDiff(w.start) === 0 || Date.now() - w.end < 3 * 3600000);
 A.resume = b => {
   const w = S.workouts.find(x => x.id === b.dataset.id); if (!resumable(w)) return;
   document.querySelectorAll('.ov').forEach(o => o.close ? o.close() : o.remove());
@@ -500,6 +524,7 @@ A.resume = b => {
   tab = 'train'; window.scrollTo(0, 0); render(); toast(L('已回到这次训练，接着记', 'Back in this workout'));
 };
 A.addEx = b => {
+  if (!b) return;
   const m = b.dataset.m;
   openPicker(ex => {
     const w = m === 'e' ? editW : S.active;
@@ -596,7 +621,8 @@ if (window.visualViewport) { visualViewport.addEventListener('resize', syncVV); 
 A.finish = async (b, e, quick) => {   // quick：跳过“确定结束吗”的确认
   const w = S.active, all = w.exercises.flatMap(e => e.sets), undone = all.filter(s => !s.done).length;
   const FIN = L('结束训练', 'Finish workout'), DISCARD = L('放弃这次训练', 'Discard workout'), KEEP = L('继续训练', 'Keep training');
-  if (!all.length) {
+  const hasC = !!(w.cardio && w.cardio.length);
+  if (!all.length && !hasC) {
     if (await ask(FIN, L('本次训练还没有记录任何组。', 'No sets logged yet.'), [[DISCARD, 'x', 'fill-danger'], [KEEP, 'c']]) === 'x') { S.active = null; S.timer = null; save(); restAudio(0); alarmOff(); render(); }
     return;
   }
@@ -606,7 +632,7 @@ A.finish = async (b, e, quick) => {   // quick：跳过“确定结束吗”的�
   const saved = JSON.parse(JSON.stringify(w));
   saved.exercises.forEach(e => { if (mode === 'all') e.sets.forEach(s => s.done = true); else e.sets = e.sets.filter(s => s.done); renum(e); });
   saved.exercises = saved.exercises.filter(e => e.sets.length);
-  if (!saved.exercises.length) {
+  if (!saved.exercises.length && !hasC) {
     if (await ask(L('没有已完成的组', 'No completed sets'), L('要放弃这次训练吗？', 'Discard this workout?'), [[DISCARD, 'x', 'fill-danger'], [KEEP, 'c']]) === 'x') { S.active = null; S.timer = null; save(); restAudio(0); alarmOff(); render(); }
     return;
   }
@@ -618,14 +644,17 @@ A.finish = async (b, e, quick) => {   // quick：跳过“确定结束吗”的�
 };
 const statBox = (k, v, wide) => `<div class="stat"${wide ? ' style="grid-column:1/-1"' : ''}><span class="sub">${k}</span><b>${v}</b></div>`;
 function showSummary(w) {
-  const st = stats(w), ov = sheet(L('训练完成 🎉', 'Workout done 🎉'));
-  ov.body.innerHTML = `<div class="stats">${statBox(L('训练时长', 'Duration'), fmtDur(w.end - w.start))}${statBox(L('动作数', 'Exercises'), st.ex)}${statBox(L('总组数', 'Sets'), st.n)}${statBox(L('总容量', 'Volume'), fmtKg(st.v))}</div>` +
+  const st = stats(w), ov = sheet(L('训练完成 🎉', 'Workout done 🎉')), cm = Math.round(cardioMin(w));
+  ov.body.innerHTML = `<div class="stats">${statBox(L('训练时长', 'Duration'), fmtDur(w.end - w.start))}${statBox(L('动作数', 'Exercises'), st.ex)}${statBox(L('总组数', 'Sets'), st.n)}${statBox(L('总容量', 'Volume'), fmtKg(st.v))}${cm ? statBox(L('有氧', 'Cardio'), L(cm + ' 分钟', cm + ' min'), true) : ''}</div>` +
     detailHTML(w) + `<button class="btn pri big" data-x="close">${L('好的', 'Nice')}</button>`;
 }
 function detailHTML(w) {
   const prs = prMap(w);
-  return `<div class="card">${w.exercises.map(e => { const ex = exById(e.exId); let k = 0; return `<div class="exline"><b>${esc(exName(ex))}</b>${ex.deleted ? ` <span class="tag">${L('已从动作库删除', 'removed from library')}</span>` : ''}<div class="sub">${e.sets.map(s => `${s.warm ? WARM : ++k + '.'} ${fmtSet(ex, s)}${prs.has(s) ? ' 🏆' : ''}`).join('　')}</div></div>`; }).join('')}</div>`;
+  return `<div class="card">${w.exercises.map(e => { const ex = exById(e.exId); let k = 0; return `<div class="exline"><b>${esc(exName(ex))}</b>${ex.deleted ? ` <span class="tag">${L('已从动作库删除', 'removed from library')}</span>` : ''}<div class="sub">${e.sets.map(s => `${s.warm ? WARM : ++k + '.'} ${fmtSet(ex, s)}${prs.has(s) ? ' 🏆' : ''}`).join('　')}</div></div>`; }).join('')}${(w.cardio || []).map(c => `<div class="exline"><b>${esc(IV[c.kind] ? IV[c.kind].name : '')}</b><div class="sub">${esc(cardioTxt(c))}</div></div>`).join('')}</div>`;
 }
+// 列表里的一行摘要：动作名 + 有氧，组数容量 + 有氧分钟
+const wNames = w => w.exercises.map(e => exName(exById(e.exId))).concat((w.cardio || []).map(c => IV[c.kind] ? IV[c.kind].name : '')).join(LIST_SEP);
+const wSum = w => { const st = stats(w), cm = Math.round(cardioMin(w)); return [st.n ? `${setsTxt(st.n)} · ${fmtKg(st.v)}` : '', cm ? L(`有氧 ${cm} 分钟`, `${cm} min cardio`) : ''].filter(Boolean).join(' · '); };
 A.restPick = () => openRestPicker();
 
 /* ========== 动作库：选择 / 管理 ========== */
@@ -796,26 +825,35 @@ function makeWav(sec) {
 let RA = null, RAurl = null;
 // 音频正在播（或已经播完，提示音已经响过）
 const armed = () => !!(RA && RAurl && (!RA.paused || RA.ended));
-// 必须在点击里调用（iOS 只允许用户点击触发播放）；sec<=0 表示停止；quiet 时被拦截不弹提示
-function restAudio(sec, quiet) {
+function stopRA() {
   if (RA) { RA.pause(); RA.removeAttribute('src'); RA.load(); }
   if (RAurl) { URL.revokeObjectURL(RAurl); RAurl = null; }
-  if (sec <= 0 || soundMode() !== 'bg') { if ('mediaSession' in navigator) navigator.mediaSession.metadata = null; return Promise.resolve(true); }
+}
+// 组间休息和有氧间歇共用同一个 <audio>：同一时间只会有一个在播
+function playRA(blob, title, quiet) {
   if (!RA) {
     RA = new Audio(); RA.preload = 'auto'; RA.setAttribute('playsinline', '');
     RA.addEventListener('pause', () => { if (S.timer) renderTimer(); });
-    // 在锁屏播放器上点了暂停又点播放：按剩余时间重新开始，免得提示音推迟
-    try { navigator.mediaSession.setActionHandler('play', () => { const t = S.timer; if (t && t.end - Date.now() > 1500) restAudio((t.end - Date.now()) / 1000, true); }); } catch (e) {}
+    // 在锁屏播放器上点了暂停又点播放：按当前进度重新开始，免得提示音推迟
+    try { navigator.mediaSession.setActionHandler('play', () => { if (S.iv) return ivAudio(true); const t = S.timer; if (t && t.end - Date.now() > 1500) restAudio((t.end - Date.now()) / 1000, true); }); } catch (e) {}
   }
-  RAurl = URL.createObjectURL(makeWav(Math.min(900, Math.max(.05, sec))));
+  RAurl = URL.createObjectURL(blob);
   RA.src = RAurl;
   let p = RA.play(); if (!p || !p.then) p = Promise.resolve();
   p = p.then(() => true, () => { if (!quiet) toast(L('提示音被系统拦截了，时间到时只会闪屏', 'The system blocked the sound; the screen will only flash'), true); renderTimer(); return false; });
-  try { if ('mediaSession' in navigator && window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title: L('组间休息 ' + Math.round(sec) + ' 秒', 'Rest ' + Math.round(sec) + 's'), artist: L('练习记录', 'gymlog') }); } catch (e) {}
+  try { if ('mediaSession' in navigator && window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title, artist: L('练习记录', 'gymlog') }); } catch (e) {}
   return p;
+}
+// 必须在点击里调用（iOS 只允许用户点击触发播放）；sec<=0 表示停止；quiet 时被拦截不弹提示
+function restAudio(sec, quiet) {
+  if (S.iv) return Promise.resolve(true);             // 有氧进行中，音频归它用
+  stopRA();
+  if (sec <= 0 || soundMode() !== 'bg') { if ('mediaSession' in navigator) navigator.mediaSession.metadata = null; return Promise.resolve(true); }
+  return playRA(makeWav(Math.min(900, Math.max(.05, sec))), L('组间休息 ' + Math.round(sec) + ' 秒', 'Rest ' + Math.round(sec) + 's'), quiet);
 }
 // 被打断（别的 App 出声、页面被系统重载、拔了耳机）后，按剩余时间重新接上
 function rearm() {
+  if (S.iv) return ivAudio(true);
   const t = S.timer; if (!t || soundMode() !== 'bg' || armed()) return;
   const rem = t.end - Date.now(); if (rem > 1500) restAudio(rem / 1000, true);
 }
@@ -865,6 +903,209 @@ A.testSound = () => {
   else { unlockAudio(); setTimeout(chimeAC, 300); toast(L('如果静音开关开着，这个模式听不到', 'You won’t hear this mode with the silent switch on')); }
 };
 
+/* ========== 有氧间歇 ==========
+   两种固定方案 + 只记时长。进行中的状态存在 S.iv（刷新、被系统杀掉后还能接上）：
+   { kind, mach, start, pausedMs, paused（暂停开始的时间）, skipMs（跳过的秒数） }
+   当前进度 = 现在 − 开始 − 暂停总时长 + 跳过的时长，再按方案算出在哪一段。
+   提示音：开始时生成一整段“静音 + 每次切换的提示音”的音频当媒体播放，锁屏也会按时响；
+   暂停、跳过时按新进度重新生成。不打断音乐模式下只在前台用 Web Audio 响。 */
+const MACH = { bike: ['🚴', L('单车', 'Bike')], stair: ['🪜', L('爬楼机', 'Stairs')], tread: ['🏃', L('跑步机', 'Treadmill')], row: ['🚣', L('划船机', 'Rower')] };
+const IV = {
+  i44: { name: L('4×4 间歇', '4×4 intervals'), plan: [['warm', 300], ...[1, 2, 3, 4].flatMap(() => [['hard', 240], ['easy', 180]])] },
+  sprint: { name: L('冲刺 5×30 秒', 'Sprints 5×30s'), plan: [['warm', 60], ...[1, 2, 3, 4, 5].flatMap(() => [['hard', 30], ['easy', 90]])] },
+  free: { name: L('有氧', 'Cardio') }
+};
+const PH = {
+  warm: [L('热身', 'Warm up'), L('慢慢加速，逐渐热起来', 'Ease in and build up gradually')],
+  hard: [L('高强度', 'Hard'), L('很吃力，只能蹦出几个字', 'Hard enough that you can only say a few words')],
+  easy: [L('轻松', 'Easy'), L('放慢蹬，让呼吸缓下来', 'Back off and let your breathing settle')]
+};
+const SPRINT_PH = { warm: [L('准备', 'Get ready'), L('慢骑，准备好就开始冲', 'Spin easy, the first sprint is coming')], hard: [L('全力冲刺', 'All out'), L('能多快就多快', 'As fast as you can go')], easy: [L('慢骑', 'Recover'), L('最轻的阻力，慢慢骑', 'Lightest resistance, spin slowly')] };
+const ivTotal = k => IV[k].plan.reduce((a, p) => a + p[1], 0);
+const ivRounds = k => IV[k].plan.filter(p => p[0] === 'hard').length;
+const ivPos = iv => (iv.paused || Date.now()) - iv.start - iv.pausedMs + iv.skipMs;
+// 进度 ms → 在第几段、这段还剩多少、做完了几轮
+function ivAt(k, ms) {
+  const plan = IV[k].plan; let t = 0, done = 0;
+  for (let i = 0; i < plan.length; i++) {
+    const end = t + plan[i][1] * 1000;
+    if (ms < end) return { i, type: plan[i][0], left: end - ms, len: plan[i][1] * 1000, done, round: plan.slice(0, i + 1).filter(p => p[0] === 'hard').length };
+    if (plan[i][0] === 'hard') done++;
+    t = end;
+  }
+  return { i: plan.length, type: 'end', left: 0, done, round: done };
+}
+// 提示音：进入高强度前 3 秒滴滴滴，再上扬的两个音；进入轻松是下降的「叮—咚」；全部结束响两遍
+function tone(d, sr, at, f, tau, amp) {
+  const st = Math.round(at * sr), P = 2 * Math.PI, hs = [[1, 1, 1], [2, .3, .5], [3, .08, .25]].filter(h => f * h[0] < sr / 2 - 200);
+  for (let i = 0, n = Math.min(d.length - st, Math.round(sr * tau * 6)); i < n; i++) {
+    const t = i / sr; let v = 0; hs.forEach(([m, a, k]) => { v += a * Math.exp(-t / (tau * k)) * Math.sin(P * f * m * t); });
+    d[st + i] += amp * Math.min(1, t / .005) * v;
+  }
+}
+const CUES = {
+  tick: [[0, 1318.5, .05, .45]],
+  go: [[0, 783.99, .3, .8], [.16, 1046.5, .35, .8], [.5, 783.99, .3, .8], [.66, 1046.5, .45, .8]],
+  easy: [[0, 880, .5, .75], [.48, 698.46, .6, .75]],
+  end: [[0, 880, .6, .75], [.48, 698.46, .6, .75], [1.6, 880, .6, .75], [2.08, 698.46, .8, .75]]
+};
+function ivEvents(k) {
+  const plan = IV[k].plan, ev = []; let t = 0;
+  plan.forEach((p, i) => { if (i) { if (p[0] === 'hard') [3, 2, 1].forEach(s => ev.push([t - s, 'tick'])); ev.push([t, p[0] === 'hard' ? 'go' : 'easy']); } t += p[1]; });
+  ev.push([t, 'end']);
+  return ev;
+}
+function ivWav(k, fromSec) {
+  const len = ivTotal(k) - fromSec + 4, sr = len > 300 ? 6000 : 16000, n = Math.round(sr * len), d = new Float32Array(n);
+  ivEvents(k).forEach(([t, c]) => { const at = t - fromSec; if (at >= 0) CUES[c].forEach(([o, f, tau, a]) => tone(d, sr, at + o, f, tau, a * .9)); });
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf), pcm = new Int16Array(buf, 44);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) if (d[i]) pcm[i] = Math.max(-32767, Math.min(32767, Math.round(d[i] * 32767)));
+  return new Blob([buf], { type: 'audio/wav' });
+}
+function cueAC(c) {
+  if (!AC) return;
+  try {
+    AC.resume(); const sr = AC.sampleRate, d = new Float32Array(Math.round(sr * 3.6));
+    CUES[c].forEach(([o, f, tau, a]) => tone(d, sr, o, f, tau, a * .9));
+    const b = AC.createBuffer(1, d.length, sr); b.getChannelData(0).set(d);
+    const s = AC.createBufferSource(); s.buffer = b; s.connect(AC.destination); s.start(AC.currentTime + .05);
+  } catch (e) {}
+}
+// 间歇用媒体音频：锁屏也响 和 系统计时器 两种模式都用它（系统计时器一次只能定一个时间）
+const ivUsesMedia = () => ['bg', 'clock'].includes(soundMode());
+function ivAudio(rearming) {
+  const iv = S.iv; if (!iv || iv.paused || !ivUsesMedia()) return;
+  if (rearming && armed()) return;
+  const pos = ivPos(iv) / 1000; if (pos >= ivTotal(iv.kind)) return;
+  stopRA();
+  try { if ('audioSession' in navigator) navigator.audioSession.type = 'playback'; } catch (e) {}
+  playRA(ivWav(iv.kind, pos), `${IV[iv.kind].name} · ${MACH[iv.mach][1]}`, rearming);
+}
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !wakeLock && !document.hidden) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    if (!on && wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+  } catch (e) { wakeLock = null; }
+}
+const lastCardio = k => { for (const w of S.workouts) { const c = (w.cardio || []).find(x => x.kind === k); if (c) return c.start; } return 0; };
+const cardioTxt = c => { const m = Math.max(1, Math.round((c.end - c.start - (c.pausedMs || 0)) / 60000)); return `${MACH[c.mach] ? MACH[c.mach][0] + ' ' + MACH[c.mach][1] : ''} · ${IV[c.kind] ? IV[c.kind].name : ''} · ${L(m + ' 分钟', m + ' min')}${c.total ? ` · ${c.rounds}/${c.total} ${L('轮', 'rounds')}` : ''}${c.note ? ' · ' + c.note : ''}`; };
+const cardioMin = w => (w.cardio || []).reduce((a, c) => a + Math.max(0, c.end - c.start - (c.pausedMs || 0)) / 60000, 0);
+function cardioHTML(w, m) {
+  return (w.cardio || []).map((c, ci) => `<div class="card cardio" data-m="${m}"><div class="exh"><div><div class="exn">${esc(IV[c.kind] ? IV[c.kind].name : '')}</div><div class="sub">${esc(cardioTxt(c))}</div></div><div class="exb"><button class="btn" data-a="cDel" data-ci="${ci}" aria-label="${L('删除', 'Delete')}">✕</button></div></div></div>`).join('');
+}
+A.cDel = async b => {
+  const m = b.closest('[data-m]').dataset.m, w = m === 'e' ? editW : S.active, c = w && w.cardio && w.cardio[+b.dataset.ci]; if (!c) return;
+  if (!await confirmDanger(L('删除有氧记录', 'Delete cardio'), cardioTxt(c))) return;
+  w.cardio.splice(+b.dataset.ci, 1); commit(m);
+};
+A.cardio = b => {
+  const m = (b.dataset.m) || 'a';
+  // 从首页「只练有氧」进来时还没有训练：等真正开始或记录时再建，只看一眼就关掉不会留下一个空训练
+  const ensure = () => { if (m === 'a' && !S.active) { S.active = { id: uid(), start: Date.now(), end: null, exercises: [] }; save(); } };
+  let mach = MACH[S.settings.cmach] ? S.settings.cmach : 'bike';
+  const ov = sheet(L('有氧', 'Cardio'));
+  const ago = k => { const t = lastCardio(k); return t ? L(`上次 ${agoTxt(t)}`, `last ${agoTxt(t)}`) : L('还没做过', 'not done yet'); };
+  const sndNote = soundMode() === 'mix' ? L('当前提醒方式只在屏幕亮着时响。骑车时把手机放在车把上，停在这个页面。', 'Your alarm setting only rings while the screen is on. Keep this page open on the handlebars.')
+    : soundMode() === 'off' ? L('当前设置是只闪屏，切换时不会出声。', 'Your alarm setting is flash only, so there will be no sound.')
+    : L('每次切换都会响提示音，锁屏也会；休息时会暂停你正在放的音乐。', 'A cue plays at every switch, even when locked. It pauses your music.') + (soundMode() === 'clock' ? L('（系统计时器只能定一个时间，间歇改用这种方式提醒）', ' (The Clock timer can only hold one time, so intervals use this instead.)') : '');
+  const draw = () => {
+    ov.body.innerHTML = (m === 'a' ? `<div class="seg" style="margin-top:4px">${Object.keys(MACH).map(k => `<button class="${k === mach ? 'on' : ''}" data-mach="${k}">${MACH[k][0]} ${MACH[k][1]}</button>`).join('')}</div>
+      <button class="li" data-go="i44"><div><div class="t">${IV.i44.name} · ${L('约 33 分钟', 'about 33 min')}</div><div class="sub">${L('热身 5 分钟，然后 4 轮：高强度 4 分钟 + 轻松 3 分钟。每周 1 次就够。', 'Warm up 5 min, then 4 rounds of 4 min hard + 3 min easy. Once a week is enough.')}</div><div class="sub">${ago('i44')}</div></div><span class="sub">›</span></button>
+      <button class="li" data-go="sprint"><div><div class="t">${IV.sprint.name} · ${L('约 11 分钟', 'about 11 min')}</div><div class="sub">${L('准备 1 分钟，然后 5 轮：全力 30 秒 + 慢骑 90 秒。适合放在力量训练后。', 'Spin 1 min, then 5 rounds of 30 s all-out + 90 s easy. Good after lifting.')}</div><div class="sub">${ago('sprint')}</div></div><span class="sub">›</span></button>
+      <div class="sub" style="margin:4px 2px 12px">${sndNote}</div>` : '') +
+      `<label class="lbl">${L('只记时长', 'Just log the time')}</label>
+      <input class="txt" data-x="note" maxlength="30" autocomplete="off" placeholder="${L('成绩，可不填：比如 坡度8 · 5.0 或 65 层', 'Optional: e.g. incline 8 · 5.0, or 65 floors')}" style="margin-bottom:8px">
+      <div class="chips">${[10, 20, 30, 45].map(n => `<button class="chip" data-min="${n}">${L(n + ' 分钟', n + ' min')}</button>`).join('')}</div>
+      <div class="row2" style="margin-top:8px"><input class="txt" data-x="min" inputmode="numeric" pattern="[0-9]*" placeholder="${L('分钟数', 'Minutes')}" autocomplete="off"><button class="btn" data-x="free">${L('记录', 'Log')}</button></div>`;
+  };
+  const logFree = n => {
+    if (!n || n > 300) return toast(L('请输入 1 到 300 之间的分钟数', 'Enter 1 to 300 minutes'), true);
+    ensure();
+    const w = m === 'e' ? editW : S.active, end = m === 'e' ? (w.end || w.start + n * 60000) : Date.now(), note = ov.body.querySelector('[data-x="note"]').value.trim();
+    (w.cardio = w.cardio || []).push(Object.assign({ id: uid(), kind: 'free', mach, start: end - n * 60000, end }, note ? { note } : {}));
+    if (m === 'a') w.start = Math.min(w.start, end - n * 60000);   // 只记了一段有氧：训练开始时间往前挪，时长才对
+    ov.close(); if (m === 'a') render(); commit(m); toast(L('已记录', 'Logged'));
+  };
+  ov.body.addEventListener('click', e => {
+    const t = e.target.closest('[data-mach],[data-go],[data-min],[data-x="free"]'); if (!t) return;
+    if (t.dataset.mach) { const nt = ov.body.querySelector('[data-x="note"]').value; mach = t.dataset.mach; S.settings.cmach = mach; save(); draw(); ov.body.querySelector('[data-x="note"]').value = nt; return; }
+    if (t.dataset.min) return logFree(+t.dataset.min);
+    if (t.dataset.x === 'free') return logFree(parseR(ov.body.querySelector('[data-x="min"]').value));
+    if (t.dataset.go) { ov.close(); ensure(); render(); startIv(t.dataset.go, mach); }
+  });
+  draw();
+};
+function startIv(kind, mach) {
+  if (S.timer) { S.timer = null; alarmOff(); }       // 组间休息让位给有氧
+  S.iv = { kind, mach, start: Date.now(), pausedMs: 0, paused: 0, skipMs: 0 };
+  touchActive(); save(); renderTimer();
+  unlockAudio(); ivAudio(); keepAwake(true); openIv();
+}
+let ivOv = null, ivLast = -1;
+function openIv() {
+  if (ivOv || !S.iv) return;
+  ivOv = document.createElement('div'); ivOv.className = 'ov ivov';
+  ivOv.innerHTML = `<div class="ivbox"><div class="ivtop"><b data-x="title"></b><span data-x="all"></span></div>
+    <div class="ivmid"><div class="ivph" data-x="ph"></div><div class="ivnum" data-x="num"></div><div class="ivhint" data-x="hint"></div><div class="ivrnd" data-x="rnd"></div><div class="ivnext" data-x="next"></div></div>
+    <div class="ivbar"><i data-x="bar"></i></div>
+    <div class="ivbts"><button class="btn" data-x="pause"></button><button class="btn" data-x="skip">${L('跳过这段', 'Skip')}</button><button class="btn" data-x="stop">${L('结束', 'End')}</button></div></div>`;
+  ivOv.addEventListener('click', e => {
+    const t = e.target.closest('[data-x]'); if (!t || !S.iv) return;
+    const iv = S.iv, now = Date.now();
+    if (t.dataset.x === 'pause') {
+      if (iv.paused) { iv.pausedMs += now - iv.paused; iv.paused = 0; save(); ivAudio(); keepAwake(true); }
+      else { iv.paused = now; save(); stopRA(); }
+      renderIv();
+    }
+    if (t.dataset.x === 'skip') { const p = ivAt(iv.kind, ivPos(iv)); if (p.type !== 'end') { iv.skipMs += p.left; save(); ivLast = p.i + 1; if (!iv.paused) ivAudio(); renderIv(); } }
+    if (t.dataset.x === 'stop') ask(L('结束有氧？', 'End cardio?'), L('已经做的部分会记下来。', 'What you’ve done so far will be logged.'), [[L('结束并记录', 'End & log'), 'ok', 'pri'], [L('不记录，直接放弃', 'Discard'), 'x', 'fill-danger'], [L('继续', 'Keep going'), 'no']]).then(v => { if (v === 'ok') endIv(true); if (v === 'x') endIv(false); });
+  });
+  document.body.appendChild(ivOv); lockBody(); ivLast = -1; renderIv();
+}
+function renderIv() {
+  const iv = S.iv; if (!iv || !ivOv) return;
+  const k = iv.kind, pos = ivPos(iv), p = ivAt(k, pos), q = s => ivOv.querySelector(`[data-x="${s}"]`);
+  if (p.type === 'end') return endIv(true, true);
+  if (ivLast >= 0 && p.i !== ivLast && !iv.paused) {        // 前台看到切换：闪一下；不打断音乐模式在这里出声；媒体音频被打断时补响
+    try { ivOv.animate([{ filter: 'brightness(1.9)' }, { filter: 'brightness(1)' }], { duration: 500, iterations: 3 }); } catch (e) {}   // 全屏盖住了 #flash，直接让整屏亮几下
+    const c = p.type === 'hard' ? 'go' : 'easy';
+    if (soundMode() === 'mix' || (ivUsesMedia() && !armed())) cueAC(c);
+  }
+  ivLast = p.i;
+  const names = k === 'sprint' ? SPRINT_PH : PH, plan = IV[k].plan, nx = plan[p.i + 1];
+  ivOv.className = 'ov ivov ' + p.type + (iv.paused ? ' paused' : '');
+  q('title').textContent = `${MACH[iv.mach][0]} ${IV[k].name}`;
+  q('all').textContent = L('还剩 ', 'Left ') + fmtClock(ivTotal(k) * 1000 - pos + 999);
+  q('ph').textContent = iv.paused ? L('已暂停', 'Paused') : names[p.type][0];
+  q('num').textContent = fmtClock(p.left + 999);
+  q('hint').textContent = iv.paused ? L('点「继续」接着练', 'Tap Resume to continue') : names[p.type][1];
+  q('rnd').textContent = p.round ? L(`第 ${p.round} / ${ivRounds(k)} 轮`, `Round ${p.round} of ${ivRounds(k)}`) : '';
+  q('next').textContent = nx ? L('下一段：', 'Next: ') + names[nx[0]][0] + ' ' + fmtClock(nx[1] * 1000) : L('最后一段', 'Last one');
+  q('bar').style.transform = `scaleX(${Math.min(1, 1 - p.left / p.len)})`;
+  q('pause').textContent = iv.paused ? L('继续', 'Resume') : L('暂停', 'Pause');
+}
+function endIv(keep, finished) {
+  const iv = S.iv; if (!iv) return;
+  const now = Date.now(), pos = Math.min(ivPos(iv), ivTotal(iv.kind) * 1000), p = ivAt(iv.kind, pos);
+  // 做完了：结束时间按方案算（回到 App 时可能已经过了很久）；提前结束：按现在算
+  const end = finished ? iv.start + iv.pausedMs + ivTotal(iv.kind) * 1000 - iv.skipMs : (iv.paused || now);
+  const pausedMs = iv.pausedMs;
+  const rec = { id: uid(), kind: iv.kind, mach: iv.mach, start: iv.start, end: Math.max(iv.start + 1000, end), pausedMs, rounds: finished ? ivRounds(iv.kind) : p.done, total: ivRounds(iv.kind) };
+  tx(() => { if (keep && S.active && pos >= 60000) (S.active.cardio = S.active.cardio || []).push(rec); S.iv = null; touchActive(); });
+  if (!finished) stopRA();           // 做完时最后的提示音可能还在响，不掐断
+  keepAwake(false); applyAudioSession();
+  if (ivOv) { ivOv.remove(); ivOv = null; unlockBody(); }
+  render();
+  if (keep && pos < 60000) toast(L('不到 1 分钟，没有记录', 'Under a minute, not logged'));
+  else if (keep) toast(finished ? L('有氧完成 💪 已记录', 'Cardio done 💪 Logged') : L('已记录', 'Logged'));
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.iv && !S.iv.paused) keepAwake(true); });
+
 /* ========== 历史记录 ========== */
 function rHist() {
   const m = $('#main');
@@ -873,7 +1114,7 @@ function rHist() {
   S.workouts.forEach(w => {
     const d = new Date(w.start), mk = L(`${d.getFullYear()}年${d.getMonth() + 1}月`, `${MONTH_EN[d.getMonth()]} ${d.getFullYear()}`), st = stats(w);
     if (mk !== month) { month = mk; h += `<h2>${mk}</h2>`; }
-    h += `<button class="li" data-a="hOpen" data-id="${w.id}"><div><div class="t">${fmtDT(w.start)}</div><div class="sub">${esc(w.exercises.map(e => exName(exById(e.exId))).join(LIST_SEP))}</div><div class="sub">${setsTxt(st.n)} · ${fmtKg(st.v)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}${(n => n ? L(` · 🏆 ${n} 项纪录`, ` · 🏆 ${n} PR${n === 1 ? '' : 's'}`) : '')(prMap(w).size)}</div></div><span class="sub">›</span></button>`;
+    h += `<button class="li" data-a="hOpen" data-id="${w.id}"><div><div class="t">${fmtDT(w.start)}</div><div class="sub">${esc(wNames(w))}</div><div class="sub">${wSum(w)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}${(n => n ? L(` · 🏆 ${n} 项纪录`, ` · 🏆 ${n} PR${n === 1 ? '' : 's'}`) : '')(prMap(w).size)}</div></div><span class="sub">›</span></button>`;
   });
   m.innerHTML = h; $('#hdr').textContent = L(`共 ${S.workouts.length} 次`, `${S.workouts.length} total`);
 }
@@ -901,7 +1142,7 @@ function openEdit(w) {
   editOv.querySelector('[data-x="save"]').addEventListener('click', () => {
     const sets = editW.exercises.flatMap(e => e.sets);
     if (document.querySelector('.sheet input.bad')) return toast(L('有不合法的数字，请先修正', 'Fix the invalid numbers first'), true);
-    if (!sets.length) return toast(L('至少保留一组；要删除整次训练请在详情里删除', 'Keep at least one set. To delete the whole workout, use Delete in its details'), true);
+    if (!sets.length && !(editW.cardio && editW.cardio.length)) return toast(L('至少保留一组；要删除整次训练请在详情里删除', 'Keep at least one set. To delete the whole workout, use Delete in its details'), true);
     if (editW.end && editW.end <= editW.start) return toast(END_ERR, true);
     editW.exercises = editW.exercises.filter(e => e.sets.length); editW.exercises.forEach(renum);
     const ok = tx(() => { const i = S.workouts.findIndex(x => x.id === w.id); S.workouts[i] = editW; sortW(); });
@@ -922,7 +1163,7 @@ function rEdit() {
       ${[60, 90, 120].map(m => `<button class="chip" data-x="dur" data-m="${m}">${L(`练了 ${m / 60} 小时`, `${m / 60} h`)}</button>`).join('')}
     </div>
     <div class="sub" style="margin-top:10px">${L('编辑模式下新加的组默认算作已完成，可点按钮切换。', 'Sets added while editing count as done; tap the button to change.')}</div>` +
-    editorHTML(editW, 'e') + `<button class="btn big" data-a="addEx" data-m="e">${L('＋ 添加动作', '＋ Add exercise')}</button>`;
+    editorHTML(editW, 'e') + cardioHTML(editW, 'e') + `<div class="row2"><button class="btn big" data-a="addEx" data-m="e">${L('＋ 添加动作', '＋ Add exercise')}</button><button class="btn big" data-a="cardio" data-m="e">${L('＋ 有氧', '＋ Cardio')}</button></div>`;
   const q = s => editOv.body.querySelector(s);
   // 改开始时间：时长保持不变；改结束时间：只改结束
   q('[data-x="dt"]').addEventListener('change', e => {
@@ -1088,6 +1329,8 @@ function rSet() {
       <button class="btn big" data-a="testSound">${L('试听提醒（5 秒后响）', 'Test alarm (rings in 5 s)')}</button></div>
     <h2>${L('自动结束训练', 'Auto-finish')}</h2><div class="card"><div class="chips" style="flex-wrap:wrap">${[[10, L('10 分钟', '10 min')], [20, L('20 分钟', '20 min')], [30, L('30 分钟', '30 min')], [0, L('不自动结束', 'Off')]].map(([v, t]) => `<button class="chip ${idleMin() === v ? 'on' : ''}" data-a="idle" data-v="${v}">${t}</button>`).join('')}</div>
       <div class="sub" style="margin-top:8px">${idleMin() ? L(`训练中超过 ${idleMin()} 分钟没有任何操作，就自动结束并保存，结束时间按最后一组完成的时间算。弹窗里可以撤销。`, `After ${idleMin()} minutes with no activity, the workout finishes and saves itself, ending at your last completed set. You can undo it.`) : L('不会自动结束，记得自己点「结束训练」。', 'Workouts never finish on their own. Remember to tap Finish.')}</div></div>
+    <h2>${L('每周有氧目标', 'Weekly cardio goal')}</h2><div class="card"><div class="chips" style="flex-wrap:wrap">${[[60, L('60 分钟', '60 min')], [90, L('90 分钟', '90 min')], [150, L('150 分钟', '150 min')], [0, L('不设目标', 'None')]].map(([v, t]) => `<button class="chip ${(S.settings.cgoal == null ? 60 : S.settings.cgoal) === v ? 'on' : ''}" data-a="cgoal" data-v="${v}">${t}</button>`).join('')}</div>
+      <div class="sub" style="margin-top:8px">${L('统计页会显示本周完成了多少。一般建议每周 150 分钟中等强度有氧，先定个够得着的。', 'The Stats tab shows your progress this week. 150 min of moderate cardio a week is the usual guideline; start with something you’ll hit.')}</div></div>
     <h2>${L('数据备份', 'Backup')}</h2><div class="card"><div>${L('上次备份：', 'Last backup: ')}<b>${lb ? fmtDT(lb) : L('从未备份', 'never')}</b>${lb ? L(`（${ago} 天前）`, ` (${ago} day${ago === 1 ? '' : 's'} ago)`) : ''}</div>
       <div class="sub" style="margin:6px 0 4px">${L(`共 ${S.workouts.length} 次训练、${custom} 个自定义动作，占用约 ${kb} KB。`, `${S.workouts.length} workouts, ${custom} custom exercises, about ${kb} KB.`)}</div>
       <button class="btn pri big" data-a="exp">${L('导出备份', 'Export backup')}</button><button class="btn big" data-a="imp">${L('导入备份文件', 'Import backup file')}</button><button class="btn big" data-a="paste">${L('粘贴备份文本导入', 'Import from pasted text')}</button>
@@ -1103,6 +1346,7 @@ function rSet() {
 A.lang = b => { try { localStorage.setItem(LANG_KEY, b.dataset.k); } catch (e) {} if (b.dataset.k !== LANG) location.reload(); };
 A.lib = () => openPicker(null, true);
 A.idle = b => { S.settings.idleMin = +b.dataset.v; save(); rSet(); };
+A.cgoal = b => { S.settings.cgoal = +b.dataset.v; save(); rSet(); };
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
 A.exp = async () => {
   const now = Date.now(), data = JSON.parse(JSON.stringify(S));
@@ -1129,6 +1373,7 @@ function validateBackup(p) {
   if (d.exercises.some(e => !e || typeof e.id !== 'string' || typeof e.name !== 'string')) return L('动作库数据有误', 'Exercise data is invalid');
   for (const w of d.workouts.concat(d.active ? [d.active] : [])) {
     if (!w || typeof w.id !== 'string' || typeof w.start !== 'number' || !Array.isArray(w.exercises)) return L('训练记录格式有误', 'Workout data is invalid');
+    if (w.cardio !== undefined && (!Array.isArray(w.cardio) || w.cardio.some(c => !c || typeof c.start !== 'number' || typeof c.end !== 'number' || c.end < c.start))) return L('有氧记录格式有误', 'Cardio data is invalid');
     for (const e of w.exercises) {
       if (!e || typeof e.exId !== 'string' || !Array.isArray(e.sets)) return L('动作记录格式有误', 'Exercise entries are invalid');
       for (const s of e.sets) if (!s || typeof s.w !== 'number' || !(s.w >= 0) || !Number.isInteger(s.r) || s.r < 1) return L('组数据有误（重量需 ≥0，次数需为正整数）', 'Set data is invalid (weight ≥ 0, reps a positive whole number)');
@@ -1153,7 +1398,7 @@ async function importText(txt) {
   let p;
   try { p = JSON.parse(txt); } catch (err) { ask(FAIL, L('内容无法解析，不是有效的备份（可能没有复制完整）。', 'Could not read this as a backup (maybe it was not copied in full).') + KEPT); return false; }
   const err = validateBackup(p); if (err) { ask(FAIL, err + L('。', '.') + KEPT); return false; }
-  const d = p.data, nc = d.exercises.filter(x => x.custom).length, when = p.exportedAt ? fmtDT(Date.parse(p.exportedAt)) : L('未知时间', 'an unknown time');
+  const d = p.data, nc = d.exercises.filter(x => x.custom).length, ts = Date.parse(p.exportedAt || ''), when = ts > 0 ? fmtDT(ts) : L('未知时间', 'an unknown time');
   if (!await confirmDanger(L('将覆盖当前数据', 'Replace current data'), L(`备份导出于 ${when}，包含 ${d.workouts.length} 次训练、${nc} 个自定义动作。\n导入会覆盖当前的全部数据，确定继续？`, `Exported ${when}, with ${d.workouts.length} workouts and ${nc} custom exercises.\nImporting replaces all current data. Continue?`), L('覆盖并导入', 'Replace & import'))) return false;
   const old = S;
   try { S = migrate(d); } catch (er) { S = old; ask(FAIL, er.message); return false; }
@@ -1177,10 +1422,11 @@ const allW = () => S.workouts.concat(S.active ? [S.active] : []);
 
 // 把一批训练汇总成：次数、组数、容量、时长、各部位组数（热身组不算）
 function agg(ws) {
-  const o = { n: ws.length, sets: 0, vol: 0, ms: 0, byCat: {} };
+  const o = { n: ws.length, sets: 0, vol: 0, ms: 0, byCat: {}, cmin: 0, i44: 0, sprint: 0 };
   CAT_ORDER.forEach(c => { o.byCat[c] = 0; });
   ws.forEach(w => {
     if (w.end) o.ms += Math.max(0, w.end - w.start);
+    o.cmin += cardioMin(w); (w.cardio || []).forEach(c => { if (c.kind in o) o[c.kind]++; });
     w.exercises.forEach(e => {
       const ex = exById(e.exId); if (!ex) return;
       const cat = ex.cat || '其他';
@@ -1205,6 +1451,12 @@ function rStat() {
   }
   const w0 = weekStart(now), from = w0 - (stRange === 7 ? 0 : 21 * DAY);
   const cur = agg(ws.filter(w => w.start >= from));
+  // 每周有氧目标进度条：只在「本周」显示；近 4 周按 4 倍目标算
+  const goalBar = min => {
+    const g = S.settings.cgoal == null ? 60 : S.settings.cgoal; if (!g) return '';
+    const tgt = g * (stRange === 7 ? 1 : 4), pct = Math.min(1, min / tgt), done = min >= tgt;
+    return `<span class="cgoal"><i style="transform:scaleX(${pct});${done ? 'background:var(--ok)' : ''}"></i></span><span class="sub" style="display:block;font-size:13px;font-weight:600">${done ? L(`🎯 达到目标 ${tgt} 分钟`, `🎯 Goal of ${tgt} min reached`) : L(`目标 ${tgt} 分钟，还差 ${Math.ceil(tgt - min)} 分钟`, `Goal ${tgt} min · ${Math.ceil(tgt - min)} to go`)}</span>`;
+  };
 
   // 近 8 周走势（最后一根是本周）
   const bars = [];
@@ -1238,7 +1490,7 @@ function rStat() {
 
   m.innerHTML = `
     <div class="seg">${[[7, L('本周', 'This week')], [28, L('近 4 周', 'Last 4 weeks')]].map(([k, t]) => `<button class="${stRange === k ? 'on' : ''}" data-a="stRange" data-r="${k}">${t}</button>`).join('')}</div>
-    <div class="stats">${statBox(L('训练次数', 'Workouts'), cur.n)}${statBox(L('总组数', 'Sets'), cur.sets)}${statBox(L('总容量', 'Volume'), cur.vol ? fmtKg(cur.vol) : '—')}${statBox(L('累计时长', 'Time'), cur.ms ? fmtDur(cur.ms) : '—')}</div>
+    <div class="stats">${statBox(L('训练次数', 'Workouts'), cur.n)}${statBox(L('总组数', 'Sets'), cur.sets)}${statBox(L('总容量', 'Volume'), cur.vol ? fmtKg(cur.vol) : '—')}${statBox(L('累计时长', 'Time'), cur.ms ? fmtDur(cur.ms) : '—')}${statBox(L('有氧', 'Cardio'), (cur.cmin ? L(Math.round(cur.cmin) + ' 分钟', Math.round(cur.cmin) + ' min') : '—') + `<span class="sub" style="display:block;font-size:13px;font-weight:600">${L(`4×4 ${cur.i44} 次 · 冲刺 ${cur.sprint} 次`, `4×4 ×${cur.i44} · sprints ×${cur.sprint}`)}${stRange === 7 && !cur.i44 ? L('　本周还没做 4×4', '　No 4×4 yet this week') : ''}</span>` + goalBar(cur.cmin), true)}</div>
     <h2>${L('部位分布', 'By muscle group')}</h2>
     <div class="card">${rows}<div class="sub" style="margin-top:10px">${esc(hint)}</div></div>
     <h2>${L('近 8 周组数', 'Sets per week (8 weeks)')}</h2>
@@ -1260,7 +1512,7 @@ function render() {
   renderTimer();
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b && !b.disabled && A[b.dataset.a]) A[b.dataset.a](b, e); });
-setInterval(() => { if (S.timer) renderTimer(); updElapsed(); autoEnd(); }, 500);
+setInterval(() => { if (S.timer) renderTimer(); if (S.iv) renderIv(); updElapsed(); autoEnd(); }, 500);
 /* 切回 App：iOS 刚恢复页面时还在重新排版，这时立刻改页面容易出现错位、撕裂。
    等两帧再刷新；顺便清掉离开时没来得及收起的“键盘弹出”状态，并校正可见区域。
    提示音不在这里重新生成（不是点击，iOS 不让播，还会白白卡一下），等下一次点屏幕再接上 */
@@ -1296,6 +1548,8 @@ S = load();
 applyAudioSession(); syncVV();
 render();
 // 打开时先看是不是早该结束了；没结束才提示“已恢复”
+if (S.iv && !S.active) S.iv = null;
+if (S.iv) { openIv(); if (ivUsesMedia() && !S.iv.paused) toast(L('有氧还在进行，点一下屏幕恢复提示音', 'Cardio still running. Tap the screen to restore the cues')); }
 setTimeout(() => { autoEnd(); if (S.active && !document.querySelector('.ov')) toast(L('已恢复进行中的训练', 'Resumed your workout in progress')); }, 300);
 
 /* ========== 离线支持 ========== */
@@ -1305,7 +1559,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   // 新版离线缓存接管后刷新一次。只在页面切到后台时悄悄刷，用户看不到白屏闪一下；手动「检查更新」照常立刻刷新
   const hadCtrl = !!navigator.serviceWorker.controller;
   let reloaded = false;
-  const busy = () => (S.timer && S.timer.end > Date.now() - 60000) || document.querySelector('.ov') || document.body.classList.contains('kb');
+  const busy = () => S.iv || (S.timer && S.timer.end > Date.now() - 60000) || document.querySelector('.ov') || document.body.classList.contains('kb');
   let pending = false;
   const tryReload = () => { if (reloaded || busy()) return; reloaded = true; location.reload(); };
   document.addEventListener('visibilitychange', () => { if (pending && document.hidden) tryReload(); });
