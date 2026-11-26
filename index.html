@@ -10,7 +10,8 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<link rel="apple-touch-icon" id="touchIcon">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
 <title>练习记录</title>
 <meta name="description" content="健身房训练记录：按动作自动带出上次重量，内置组间休息计时器，用曲线看每个动作的进步。数据全部存在本机浏览器，不上传。">
 <meta name="keywords" content="训练记录,健身,撸铁,力量训练">
@@ -213,7 +214,7 @@ html[lang=en] .catname{width:78px}html[lang=en] .catnum{width:60px}
 'use strict';
 /* ========== 数据层 ========== */
 const KEY = 'gymlog_v1', VER = 1, DAY = 864e5;
-const APPVER = '11.22.2';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
+const APPVER = '11.26.1';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
 /* 界面语言：默认跟随系统，设置里可以改（改完刷新页面）。
    存在单独的 key 里，不进备份；数据里的部位、内置动作名仍然存中文，只在显示时翻译 */
 const LANG_KEY = 'gymlog_lang';
@@ -956,14 +957,27 @@ function ivEvents(k) {
   return ev;
 }
 function ivWav(k, fromSec) {
-  const len = ivTotal(k) - fromSec + 4, sr = len > 300 ? 6000 : 16000, n = Math.round(sr * len), d = new Float32Array(n);
-  ivEvents(k).forEach(([t, c]) => { const at = t - fromSec; if (at >= 0) CUES[c].forEach(([o, f, tau, a]) => tone(d, sr, at + o, f, tau, a * .9)); });
+  const len = Math.max(4, ivTotal(k) - fromSec + 4), sr = len > 300 ? 6000 : 16000, n = Math.round(sr * len);
   const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf), pcm = new Int16Array(buf, 44);
   const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
   str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
   v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
   v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) if (d[i]) pcm[i] = Math.max(-32767, Math.min(32767, Math.round(d[i] * 32767)));
+  // 只在提示音时间窗内局部合成并写入 Int16Array，避免分配整段 Float32Array 导致 iOS 内存飙升
+  ivEvents(k).forEach(([t, c]) => {
+    const at = t - fromSec; if (at < 0) return;
+    const dur = Math.max(...CUES[c].map(([o, , tau]) => o + tau * 6));
+    const loc = new Float32Array(Math.ceil(dur * sr));
+    CUES[c].forEach(([o, f, tau, a]) => tone(loc, sr, o, f, tau, a * .9));
+    const base = Math.round(at * sr);
+    for (let i = 0; i < loc.length; i++) {
+      const idx = base + i;
+      if (idx >= 0 && idx < n && loc[i]) {
+        const sum = pcm[idx] + Math.round(loc[i] * 32767);
+        pcm[idx] = sum > 32767 ? 32767 : sum < -32767 ? -32767 : sum;
+      }
+    }
+  });
   return new Blob([buf], { type: 'audio/wav' });
 }
 function cueAC(c) {
@@ -1042,7 +1056,7 @@ A.cardio = b => {
 };
 function startIv(kind, mach) {
   if (S.timer) { S.timer = null; alarmOff(); }       // 组间休息让位给有氧
-  S.iv = { kind, mach, start: Date.now(), pausedMs: 0, paused: 0, skipMs: 0 };
+  S.iv = { kind, mach, start: Date.now(), pausedMs: 0, paused: 0, skipMs: 0, skippedHard: 0 };
   touchActive(); save(); renderTimer();
   unlockAudio(); ivAudio(); keepAwake(true); openIv();
 }
@@ -1062,7 +1076,7 @@ function openIv() {
       else { iv.paused = now; save(); stopRA(); }
       renderIv();
     }
-    if (t.dataset.x === 'skip') { const p = ivAt(iv.kind, ivPos(iv)); if (p.type !== 'end') { iv.skipMs += p.left; save(); ivLast = p.i + 1; if (!iv.paused) ivAudio(); renderIv(); } }
+    if (t.dataset.x === 'skip') { const p = ivAt(iv.kind, ivPos(iv)); if (p.type !== 'end') { if (p.type === 'hard' && p.left > 10000) iv.skippedHard = (iv.skippedHard || 0) + 1; iv.skipMs += p.left; save(); ivLast = p.i + 1; if (!iv.paused) ivAudio(); renderIv(); } }
     if (t.dataset.x === 'stop') ask(L('结束有氧？', 'End cardio?'), L('已经做的部分会记下来。', 'What you’ve done so far will be logged.'), [[L('结束并记录', 'End & log'), 'ok', 'pri'], [L('不记录，直接放弃', 'Discard'), 'x', 'fill-danger'], [L('继续', 'Keep going'), 'no']]).then(v => { if (v === 'ok') endIv(true); if (v === 'x') endIv(false); });
   });
   document.body.appendChild(ivOv); lockBody(); ivLast = -1; renderIv();
@@ -1095,13 +1109,16 @@ function endIv(keep, finished) {
   // 做完了：结束时间按方案算（回到 App 时可能已经过了很久）；提前结束：按现在算
   const end = finished ? iv.start + iv.pausedMs + ivTotal(iv.kind) * 1000 - iv.skipMs : (iv.paused || now);
   const pausedMs = iv.pausedMs;
-  const rec = { id: uid(), kind: iv.kind, mach: iv.mach, start: iv.start, end: Math.max(iv.start + 1000, end), pausedMs, rounds: finished ? ivRounds(iv.kind) : p.done, total: ivRounds(iv.kind) };
-  tx(() => { if (keep && S.active && pos >= 60000) (S.active.cardio = S.active.cardio || []).push(rec); S.iv = null; touchActive(); });
+  // 真实有效运动时长（扣除暂停与跳过）；连续跳过凑满方案时长不计入
+  const activeMs = Math.max(0, end - iv.start - pausedMs);
+  const rounds = Math.max(0, (finished ? ivRounds(iv.kind) : p.done) - (iv.skippedHard || 0));
+  const rec = { id: uid(), kind: iv.kind, mach: iv.mach, start: iv.start, end: Math.max(iv.start + 1000, end), pausedMs, rounds, total: ivRounds(iv.kind) };
+  tx(() => { if (keep && S.active && activeMs >= 60000) (S.active.cardio = S.active.cardio || []).push(rec); S.iv = null; touchActive(); });
   if (!finished) stopRA();           // 做完时最后的提示音可能还在响，不掐断
   keepAwake(false); applyAudioSession();
   if (ivOv) { ivOv.remove(); ivOv = null; unlockBody(); }
   render();
-  if (keep && pos < 60000) toast(L('不到 1 分钟，没有记录', 'Under a minute, not logged'));
+  if (keep && activeMs < 60000) toast(L('不到 1 分钟，没有记录', 'Under a minute, not logged'));
   else if (keep) toast(finished ? L('有氧完成 💪 已记录', 'Cardio done 💪 Logged') : L('已记录', 'Logged'));
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && S.iv && !S.iv.paused) keepAwake(true); });
@@ -1111,10 +1128,11 @@ function rHist() {
   const m = $('#main');
   if (!S.workouts.length) { m.innerHTML = `<div class="tip">${L('还没有训练记录。完成一次训练后，会按日期显示在这里。', 'No workouts yet. Finished workouts show up here by date.')}</div><button class="btn pri big" data-a="tab" data-tab="train">${L('去训练', 'Start training')}</button>`; return; }
   let h = '', month = '';
+  const prCounts = allPrCounts();
   S.workouts.forEach(w => {
     const d = new Date(w.start), mk = L(`${d.getFullYear()}年${d.getMonth() + 1}月`, `${MONTH_EN[d.getMonth()]} ${d.getFullYear()}`), st = stats(w);
     if (mk !== month) { month = mk; h += `<h2>${mk}</h2>`; }
-    h += `<button class="li" data-a="hOpen" data-id="${w.id}"><div><div class="t">${fmtDT(w.start)}</div><div class="sub">${esc(wNames(w))}</div><div class="sub">${wSum(w)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}${(n => n ? L(` · 🏆 ${n} 项纪录`, ` · 🏆 ${n} PR${n === 1 ? '' : 's'}`) : '')(prMap(w).size)}</div></div><span class="sub">›</span></button>`;
+    h += `<button class="li" data-a="hOpen" data-id="${w.id}"><div><div class="t">${fmtDT(w.start)}</div><div class="sub">${esc(wNames(w))}</div><div class="sub">${wSum(w)}${w.end ? ' · ' + fmtDur(w.end - w.start) : ''}${(n => n ? L(` · 🏆 ${n} 项纪录`, ` · 🏆 ${n} PR${n === 1 ? '' : 's'}`) : '')(prCounts.get(w.id) || 0)}</div></div><span class="sub">›</span></button>`;
   });
   m.innerHTML = h; $('#hdr').textContent = L(`共 ${S.workouts.length} 次`, `${S.workouts.length} total`);
 }
@@ -1216,6 +1234,26 @@ function prMap(w) {
     });
   });
   return res;
+}
+// 历史页一次正序遍历算出全部训练的 PR 数量，避免 O(N^2) 扫描
+function allPrCounts() {
+  const counts = new Map(), bests = {};
+  for (let i = S.workouts.length - 1; i >= 0; i--) {
+    const w = S.workouts[i], firstBests = {};
+    let cnt = 0;
+    w.exercises.forEach(e => {
+      const ex = exById(e.exId), hasPrev = e.exId in bests;
+      e.sets.forEach(s => {
+        if (!s.done || s.warm) return;
+        if (!hasPrev) { firstBests[e.exId] = addBest(firstBests[e.exId], s); return; }
+        if (prTypes(ex, s, bests[e.exId]).length) cnt++;
+        bests[e.exId] = addBest(bests[e.exId], s);
+      });
+    });
+    Object.assign(bests, firstBests);
+    if (cnt) counts.set(w.id, cnt);
+  }
+  return counts;
 }
 
 /* ========== 进步曲线 ========== */
@@ -1529,17 +1567,6 @@ function onResume() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) onResume(); });
 window.addEventListener('pageshow', onResume);
-// 运行时生成主屏幕图标（PNG data URL，不依赖外部文件）
-(function icon() {
-  try {
-    const c = document.createElement('canvas'); c.width = c.height = 180; const g = c.getContext('2d');
-    g.fillStyle = '#0a6cff'; g.fillRect(0, 0, 180, 180);
-    g.strokeStyle = '#fff'; g.lineCap = 'round'; g.lineWidth = 16;
-    [[50, 52, 128], [130, 52, 128], [28, 72, 108], [152, 72, 108]].forEach(([x, a, b]) => { g.beginPath(); g.moveTo(x, a); g.lineTo(x, b); g.stroke(); });
-    g.lineWidth = 12; g.beginPath(); g.moveTo(50, 90); g.lineTo(130, 90); g.stroke();
-    $('#touchIcon').href = c.toDataURL('image/png');
-  } catch (e) {}
-})();
 // 按界面语言改写页面里写死的文字
 document.documentElement.lang = L('zh-CN', 'en'); document.title = L('练习记录', 'gymlog');
 document.querySelectorAll('#tabs button span').forEach(s => { s.textContent = TITLES[s.parentNode.dataset.tab]; });

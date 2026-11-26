@@ -1,0 +1,19 @@
+{
+  "name": "练习记录 · gymlog",
+  "short_name": "练习记录",
+  "description": "健身房训练记录：按动作自动带出上次重量，内置组间休息计时器与有氧间歇。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#0a6cff",
+  "icons": [
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

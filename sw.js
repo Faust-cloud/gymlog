@@ -2,8 +2,8 @@
    目的：健身房地下层没信号时，也能从主屏幕秒开。
    策略：先用缓存立刻显示，同时后台拉一次最新版；下次打开即为新版。
    发布新版后如果手机迟迟不更新，把下面 CACHE 的版本号加 1，手机会强制换成新文件。 */
-const CACHE = 'gymlog-v2';
-const ASSETS = ['./', './index.html'];
+const CACHE = 'gymlog-v3';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-180.png'];
 
 self.addEventListener('install', e => {
   // cache: 'reload' 跳过浏览器自己的 HTTP 缓存，确保装进来的是服务器上的最新文件
@@ -36,7 +36,7 @@ self.addEventListener('fetch', e => {
   e.respondWith((async () => {
     const hit = await fromCache(req);
     if (hit) return hit;
-    try { return await fetch(req); }
+    try { return await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }); }
     catch (err) {
       return new Response('离线，且本地没有缓存。请联网后再打开一次。', {
         status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' }
