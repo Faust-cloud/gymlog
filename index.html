@@ -231,7 +231,7 @@ html[lang=en] .catname{width:78px}html[lang=en] .catnum{width:60px}
 'use strict';
 /* ========== 数据层 ========== */
 const KEY = 'gymlog_v1', VER = 1, DAY = 864e5;
-const APPVER = '11.28.1';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
+const APPVER = '11.28.2';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
 /* 界面语言：默认跟随系统，设置里可以改（改完刷新页面）。
    存在单独的 key 里，不进备份；数据里的部位、内置动作名仍然存中文，只在显示时翻译 */
 const LANG_KEY = 'gymlog_lang';
@@ -255,7 +255,9 @@ const BUILTIN = [
   // 11/22 新增
   ['核心','单手农夫行走'],
   // 11/26 新增（A/B 上下肢协议常用）
-  ['胸','器械推胸'],['肩','器械推肩'],['核心','帕洛夫推举']
+  ['胸','器械推胸'],['肩','器械推肩'],['核心','帕洛夫推举'],
+  // 11/28 新增
+  ['腿','史密斯深蹲']
 ];
 // 和 BUILTIN 一一对应的英文名
 const BUILTIN_EN = [
@@ -269,19 +271,46 @@ const BUILTIN_EN = [
   'Single-arm Cable Pulldown', 'Single-arm Machine Row', 'Neutral-grip Pulldown', 'Wide-elbow Row', 'Cable Curl',
   'Single-leg Deadlift', 'Bulgarian Split Squat', 'Goblet Squat', 'Back Extension',
   'One-arm Farmer’s Carry',
-  'Machine Chest Press', 'Machine Shoulder Press', 'Pallof Press'
+  'Machine Chest Press', 'Machine Shoulder Press', 'Pallof Press',
+  'Smith Machine Squat'
 ];
 // 显示用的动作名：内置动作没被改过名时显示英文，自建的和改过名的照原样
 const exName = ex => { const i = EN && !ex.custom && /^b\d+$/.test(ex.id || '') ? +ex.id.slice(1) - 1 : -1; return i >= 0 && BUILTIN[i] && ex.name === BUILTIN[i][1] ? BUILTIN_EN[i] : ex.name; };
 const TIMED = new Set(['平板支撑', '单手农夫行走']);
 const BW = new Set(['双杠臂屈伸', '引体向上', '卷腹', '悬垂举腿', '平板支撑', '山羊挺身']);
 // 同一个动作的其他叫法：搜索时也能搜到
-const ALIAS = { b4: '哑铃上斜卧推', b12: '单手哑铃划船', b16: '杠铃罗马尼亚硬拉 RDL', b25: '后束', b34: '碎颅者', b36: '单臂绳索下拉', b37: '单臂器械划船', b39: '后束 宽握划船', b42: '保加利亚单腿蹲', b46: '坐姿推胸 胸推机', b47: '坐姿推肩 肩推机', b48: '龙门架帕洛夫推举 抗旋转' };
+const ALIAS = { b4: '哑铃上斜卧推', b12: '单手哑铃划船', b16: '杠铃罗马尼亚硬拉 RDL', b19: '坐姿腿弯举 俯卧腿弯举', b25: '后束', b34: '碎颅者', b36: '单臂绳索下拉', b37: '单臂器械划船', b39: '后束 宽握划船', b42: '保加利亚单腿蹲', b46: '坐姿推胸 胸推机', b47: '坐姿推肩 肩推机', b48: '龙门架帕洛夫推举 抗旋转', b49: '史密斯架深蹲' };
 // 新内置动作如果用户已经自建过（同名或常见别名），就不再重复添加
-const SAME = { '保加利亚分腿蹲': ['保加利亚单腿蹲', '保加利亚蹲'], '仰卧臂屈伸': ['仰卧臂屈伸（哑铃）', '碎颅者'], '高脚杯深蹲': ['高脚杯蹲'], '器械推胸': ['坐姿推胸', '胸推机'], '器械推肩': ['坐姿推肩', '肩推机'], '帕洛夫推举': ['龙门架帕洛夫推举'] };
+const SAME = { '保加利亚分腿蹲': ['保加利亚单腿蹲', '保加利亚蹲'], '仰卧臂屈伸': ['仰卧臂屈伸（哑铃）', '碎颅者'], '高脚杯深蹲': ['高脚杯蹲'], '腿弯举': ['坐姿腿弯举', '俯卧腿弯举'], '器械推胸': ['坐姿推胸', '胸推机'], '器械推肩': ['坐姿推肩', '肩推机'], '帕洛夫推举': ['龙门架帕洛夫推举'], '史密斯深蹲': ['史密斯架深蹲'] };
 const builtins = () => BUILTIN.map(([cat, name], i) => ({ id: 'b' + (i + 1), name, cat, bw: BW.has(name), timed: TIMED.has(name), custom: false }));
-// 训练模板默认留空：用户在历史记录里主动「存为模板」后才在首页显示
-const defTemplates = () => [];
+// 默认 A/B 上下肢模板（可在「管理」里删除或随时恢复）
+const defTemplates = () => [
+  {
+    id: 't_a_ul',
+    name: L('A 日 · 纯上肢（拮抗超级组）', 'Day A · Upper (Antagonist)'),
+    pre: L('练前 4 分钟（不记 App）：鸟狗式 1×6/侧 · 侧平板 1×30 秒/侧。不累再加弯举↔下压；每周 1 次末尾加单车冲刺。', '4-min warm-up: Bird-dog 1×6/side · Side plank 1×30s/side. Optional arms at end; 1×/wk finish with bike sprints.'),
+    items: [
+      { exId: 'b46', sets: 4, ss: true, note: L('3-4×6-10 · 主项不冲 3-4RM', '3-4×6-10 · avoid 3-4RM grinding') },
+      { exId: 'b8', sets: 4, note: L('3-4 组 · 主项控节奏', '3-4 sets · controlled reps') },
+      { exId: 'b47', sets: 3, ss: true, note: L('3×8-10', '3×8-10') },
+      { exId: 'b11', sets: 3, note: L('3×8-12 · 划船不加第 5 组', '3×8-12 · cap at 3-4 sets') },
+      { exId: 'b35', sets: 3, ss: true, note: L('2-3×10-14 · 轻重量走控制，不冲 <8 次', '2-3×10-14 · light & controlled, stay ≥8') },
+      { exId: 'b24', sets: 3, note: L('2-3×12-15 · 轻重量走控制', '2-3×12-15 · light & controlled') }
+    ]
+  },
+  {
+    id: 't_b_ul',
+    name: L('B 日 · 纯下肢 + 核心', 'Day B · Lower + Core'),
+    pre: L('练前 5 分钟（不记 App）：鸟狗式 1×6/侧 · 侧平板 1×30 秒/侧 · 跪姿顶墙压脚踝 1 分钟。红线：B 日绝不碰上肢器械。', '5-min warm-up: Bird-dog 1×6/side · Side plank 1×30s/side · Ankle wall stretch 1 min. No upper-body machines.'),
+    items: [
+      { exId: 'b19', sets: 3, note: L('3×10-12 · 坐姿优先，滚轴在脚后跟后方往回勾', '3×10-12 · seated preferred, pad behind heel') },
+      { exId: 'b16', sets: 3, note: L('3-4×8-12 · 架上出杠、贴腿滑、零弯腰', '3-4×8-12 · rack start, close to legs, neutral spine') },
+      { exId: 'b49', sets: 3, note: L('3-4×8-10 · 换单腿蹲封顶 3 组、休 2.5 分、垫脚跟', '3-4×8-10 · or BSS max 3 sets, 2.5m rest, heel elevated') },
+      { exId: 'b48', sets: 3, ss: true, note: L('3×8-12/侧 · 抗旋转核心', '3×8-12/side · anti-rotation core') },
+      { exId: 'b32', sets: 3, note: L('3 组 · 练完立刻做小腿拉伸（直腿+屈膝共 2 分钟）', '3 sets · finish with 2-min calf stretch') }
+    ]
+  }
+];
 // 把模板里的内置 ID 匹配到用户实际动作库（如果用户以前自建过同名动作，优先连到老动作保留历史成绩）
 function resolveTplEx(exId) {
   const exact = S.exercises.find(e => e.id === exId && !e.deleted);
@@ -307,7 +336,10 @@ function migrate(d) {
     const names = [b.name, ...(SAME[b.name] || [])];
     if (!s.exercises.some(e => e.id === b.id || (!e.deleted && names.includes(e.name)))) s.exercises.push(b);
   });
-  if (Array.isArray(d.templates)) s.templates = d.templates.filter(t => t && t.id !== 't_upper' && t.id !== 't_lower');
+  if (Array.isArray(d.templates)) {
+    const kept = d.templates.filter(t => t && t.id !== 't_upper' && t.id !== 't_lower');
+    s.templates = kept.length ? kept : defTemplates();
+  }
   if (Array.isArray(d.workouts)) s.workouts = d.workouts;
   s.active = d.active || null;
   s.timer = d.timer || null;
@@ -574,12 +606,12 @@ A.repeatW = b => {
   toast(L('已带出上次动作，开练！', 'Workout loaded. Let’s go!'));
 };
 A.tplManage = () => {
-  const ov = sheet(L('管理模板', 'Manage templates'));
+  const ov = sheet(L('管理模板', 'Manage templates'), `<button class="btn" data-x="reset">${L('恢复默认 A/B', 'Reset A/B')}</button>`);
   const draw = () => {
     const tpls = S.templates || [];
-    ov.body.innerHTML = `<div class="sub" style="margin:4px 2px 10px">${L('在「历史」里点开任意一次训练，选择「存为模板」即可添加。', 'Open any workout in History and tap “Save as template” to add one.')}</div>` +
+    ov.body.innerHTML = `<div class="sub" style="margin:4px 2px 10px">${L('在「历史」里点开任意一次训练，选择「存为模板」也可添加。', 'Open any workout in History and tap “Save as template” to add one.')}</div>` +
       (tpls.length ? tpls.map((t, i) => `<div class="li"><div><div class="t">${esc(t.name)}</div><div class="sub">${esc(t.items.map(it => exName(resolveTplEx(it.exId)) + '×' + (it.sets || 1)).join(' · '))}</div></div><button class="btn danger" data-del="${i}">${L('删除', 'Delete')}</button></div>`).join('')
-        : `<div class="tip">${L('暂无模板。', 'No templates yet.')}</div>`);
+        : `<div class="tip">${L('暂无模板，可点右上角恢复默认 A/B。', 'No templates yet. Tap Reset A/B above to restore defaults.')}</div>`);
   };
   ov.addEventListener('click', async e => {
     const del = e.target.closest('[data-del]');
@@ -587,6 +619,12 @@ A.tplManage = () => {
       const i = +del.dataset.del, t = S.templates[i]; if (!t) return;
       if (await confirmDanger(L('删除模板', 'Delete template'), L(`删除「${t.name}」？`, `Delete “${t.name}”?`))) {
         tx(() => { S.templates.splice(i, 1); }); draw(); render();
+      }
+      return;
+    }
+    if (e.target.closest('[data-x="reset"]')) {
+      if (await confirmDanger(L('恢复默认 A/B 模板', 'Reset default A/B'), L('将恢复默认的 A 日（纯上肢）和 B 日（纯下肢+核心）模板，已有训练记录不受影响。', 'Restores the default A/B Upper-Lower templates. Workout history is untouched.'), L('恢复', 'Reset'))) {
+        tx(() => { S.templates = defTemplates(); }); draw(); render(); toast(L('已恢复默认 A/B 模板', 'Default A/B templates restored'));
       }
     }
   });

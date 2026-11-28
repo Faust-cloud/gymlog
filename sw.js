@@ -2,7 +2,7 @@
    目的：健身房地下层没信号时，也能从主屏幕秒开。
    策略：先用缓存立刻显示，同时后台拉一次最新版；下次打开即为新版。
    发布新版后如果手机迟迟不更新，把下面 CACHE 的版本号加 1，手机会强制换成新文件。 */
-const CACHE = 'gymlog-v5';
+const CACHE = 'gymlog-v6';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-180.png'];
 
 self.addEventListener('install', e => {
