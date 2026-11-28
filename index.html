@@ -56,8 +56,15 @@ body.timer-on.kb #hpill{display:inline-block}
 .card{background:var(--card);border-radius:16px;padding:12px;margin:10px 0}
 .card.ss-top{margin-bottom:0;border-bottom-left-radius:10px;border-bottom-right-radius:10px}
 .card.ss-bot{margin-top:0;border-top-left-radius:10px;border-top-right-radius:10px}
-.ss-link{display:flex;align-items:center;justify-content:center;gap:6px;margin:2px 0;font-size:12px;font-weight:700;color:var(--acc)}
-.exnote{font-size:13px;color:var(--acc);margin-top:3px;line-height:1.35}
+.ss-link{display:flex;align-items:center;justify-content:center;gap:6px;margin:2px 0;font-size:12px;font-weight:600;color:var(--sub)}
+.exnote{font-size:13px;color:var(--sub);margin-top:3px;line-height:1.35}
+.done-card{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:0;text-align:left;padding:13px 14px}
+.done-card-main{display:flex;align-items:baseline;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.done-card-main b{font-size:16px;flex-shrink:0}
+.done-card-main .sub{overflow:hidden;text-overflow:ellipsis}
+.done-chk{color:var(--ok);font-weight:800;flex-shrink:0}
+.set.mini.todo{background:var(--card2);border-color:transparent;opacity:.85}
+.mini-tag{font-size:12px;color:var(--sub);padding:0 10px;flex-shrink:0}
 .tpl-h{display:flex;align-items:center;justify-content:space-between;margin:14px 4px 4px}
 .tpl-h h2{margin:0}
 .tpl-card{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:13px 14px;background:var(--card);border:2px solid transparent;border-radius:16px;margin:8px 0;text-align:left}
@@ -224,7 +231,7 @@ html[lang=en] .catname{width:78px}html[lang=en] .catnum{width:60px}
 'use strict';
 /* ========== 数据层 ========== */
 const KEY = 'gymlog_v1', VER = 1, DAY = 864e5;
-const APPVER = '11.26.2';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
+const APPVER = '11.28.1';   // 每次发布新版改一下这里，设置页底部会显示，方便确认手机上是不是新版
 /* 界面语言：默认跟随系统，设置里可以改（改完刷新页面）。
    存在单独的 key 里，不进备份；数据里的部位、内置动作名仍然存中文，只在显示时翻译 */
 const LANG_KEY = 'gymlog_lang';
@@ -273,35 +280,8 @@ const ALIAS = { b4: '哑铃上斜卧推', b12: '单手哑铃划船', b16: '杠�
 // 新内置动作如果用户已经自建过（同名或常见别名），就不再重复添加
 const SAME = { '保加利亚分腿蹲': ['保加利亚单腿蹲', '保加利亚蹲'], '仰卧臂屈伸': ['仰卧臂屈伸（哑铃）', '碎颅者'], '高脚杯深蹲': ['高脚杯蹲'], '器械推胸': ['坐姿推胸', '胸推机'], '器械推肩': ['坐姿推肩', '肩推机'], '帕洛夫推举': ['龙门架帕洛夫推举'] };
 const builtins = () => BUILTIN.map(([cat, name], i) => ({ id: 'b' + (i + 1), name, cat, bw: BW.has(name), timed: TIMED.has(name), custom: false }));
-// 默认上下肢 A/B 模板（含拮抗超级组与目标次数备注，可自由增删或恢复默认）
-const defTemplates = () => [
-  {
-    id: 't_upper',
-    name: L('A 日 · 纯上肢（拮抗超级组）', 'Day A · Upper (Antagonist)'),
-    pre: L('练前 4 分钟护腰开机（免记录）：鸟狗式每侧 6 次 · 侧平板每侧 30 秒 · 单杠悬挂 30 秒', '4-min core primer (no need to log): Bird-dog 6/side · Side plank 30s/side · Dead hang 30s'),
-    items: [
-      { exId: 'b46', sets: 4, ss: true, note: L('目标 6-10 次 · 4 组满 10 次再加重', 'Target 6-10 reps · add weight when all 4 sets hit 10') },
-      { exId: 'b8', sets: 4, note: L('留 1-2 次余力 · 可换高位下拉', 'Leave 1-2 RIR · or swap to Lat Pulldown') },
-      { exId: 'b47', sets: 3, ss: true, note: L('目标 8-10 次 · 沉肩不耸肩', 'Target 8-10 reps · keep shoulders down') },
-      { exId: 'b11', sets: 4, note: L('目标 8-12 次 · 胸托/坐姿护腰不借力', 'Target 8-12 reps · brace core, no swinging') },
-      { exId: 'b35', sets: 3, ss: true, note: L('目标 10-14 次 · 孤立不做低于 8 次', 'Target 10-14 reps · stay ≥ 8 reps') },
-      { exId: 'b24', sets: 3, note: L('目标 12-15 次 · 沉肩外旋', 'Target 12-15 reps · external rotation') }
-    ]
-  },
-  {
-    id: 't_lower',
-    name: L('B 日 · 下肢 + 负重核心', 'Day B · Lower + Loaded Core'),
-    pre: L('练前 4 分钟护腰开机（免记录）：鸟狗式每侧 6 次 · 侧平板每侧 30 秒 · 单杠悬挂 30 秒', '4-min core primer (no need to log): Bird-dog 6/side · Side plank 30s/side · Dead hang 30s'),
-    items: [
-      { exId: 'b42', sets: 4, note: L('目标 8-10 次 · 先做弱侧，强侧对齐次数', 'Target 8-10 reps · weak leg first, match reps') },
-      { exId: 'b44', sets: 4, note: L('目标 8-12 次 · 护腰髋铰链，逐步抱片', 'Target 8-12 reps · hip hinge, add plate gradually') },
-      { exId: 'b19', sets: 3, ss: true, note: L('目标 10-12 次 · 孤立不做低于 8 次', 'Target 10-12 reps · stay ≥ 8 reps') },
-      { exId: 'b18', sets: 3, note: L('目标 12-15 次', 'Target 12-15 reps') },
-      { exId: 'b48', sets: 3, ss: true, note: L('每侧 8-12 次 · 抗旋转核心', '8-12/side · anti-rotation core') },
-      { exId: 'b32', sets: 3, note: L('控节奏不甩腿 · 可换单手农夫行走', 'Controlled tempo · or swap to Farmer’s Carry') }
-    ]
-  }
-];
+// 训练模板默认留空：用户在历史记录里主动「存为模板」后才在首页显示
+const defTemplates = () => [];
 // 把模板里的内置 ID 匹配到用户实际动作库（如果用户以前自建过同名动作，优先连到老动作保留历史成绩）
 function resolveTplEx(exId) {
   const exact = S.exercises.find(e => e.id === exId && !e.deleted);
@@ -327,7 +307,7 @@ function migrate(d) {
     const names = [b.name, ...(SAME[b.name] || [])];
     if (!s.exercises.some(e => e.id === b.id || (!e.deleted && names.includes(e.name)))) s.exercises.push(b);
   });
-  if (Array.isArray(d.templates)) s.templates = d.templates;
+  if (Array.isArray(d.templates)) s.templates = d.templates.filter(t => t && t.id !== 't_upper' && t.id !== 't_lower');
   if (Array.isArray(d.workouts)) s.workouts = d.workouts;
   s.active = d.active || null;
   s.timer = d.timer || null;
@@ -443,7 +423,7 @@ function rTrain() {
     if (!S.workouts.length)
       h += L(`<div class="tip"><b>👋 欢迎！三步开始记录：</b><ol><li>点下面的「开始训练」</li><li>点「＋ 添加动作」，选部位再选动作，逐组填重量和次数</li><li>每做完一组点「完成 ✓」，会自动开始组间休息倒计时</li></ol><div class="sub" style="margin-top:8px">练完点「结束训练」查看总结。建议先在 Safari 分享菜单里「添加到主屏幕」，以后都从主屏幕图标打开。</div></div>`,
         `<div class="tip"><b>👋 Welcome! Three steps to start:</b><ol><li>Tap “Start workout” below</li><li>Tap “＋ Add exercise”, pick one, then fill in weight and reps for each set</li><li>Tap “Done ✓” after each set and the rest timer starts</li></ol><div class="sub" style="margin-top:8px">Tap “Finish” when you’re done to see a summary. Tip: in Safari, Share → “Add to Home Screen”, and always open it from the icon.</div></div>`);
-    // 首页快速开练模板：自动识别上次练了哪套，把下一套（A ↔ B）标成推荐
+    // 只有用户主动保存过模板时，首页才显示快捷开练；否则保持极简双按钮
     const tpls = S.templates || [];
     if (tpls.length) {
       const lastT = S.workouts.find(x => x.tplId && tpls.some(t => t.id === x.tplId));
@@ -451,13 +431,15 @@ function rTrain() {
       h += `<div class="tpl-h"><h2>${L('快速开练', 'Quick start')}</h2><button class="btn ghost" style="min-height:36px;padding:0 8px;font-size:14px" data-a="tplManage">${L('管理', 'Manage')}</button></div>`;
       h += tpls.map((t, ti) => {
         const preview = t.items.map(it => exName(resolveTplEx(it.exId))).join(' · ');
-        const isRec = ti === recIdx;
-        return `<button class="tpl-card${isRec ? ' rec' : ''}" data-a="startTpl" data-id="${esc(t.id)}"><div style="min-width:0"><div class="t">${esc(t.name)}${isRec ? `<span class="tpl-badge">${L('今天练这个', 'Next')}</span>` : ''}</div><div class="sub" style="margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(preview)}</div></div><span class="sub">›</span></button>`;
+        const isRec = tpls.length > 1 && ti === recIdx;
+        return `<button class="tpl-card${isRec ? ' rec' : ''}" data-a="startTpl" data-id="${esc(t.id)}"><div style="min-width:0"><div class="t">${esc(t.name)}${isRec ? `<span class="tpl-badge">${L('推荐', 'Next')}</span>` : ''}</div><div class="sub" style="margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(preview)}</div></div><span class="sub">›</span></button>`;
       }).join('');
+      h += `<div class="row2" style="margin-top:10px"><button class="btn big" style="margin-top:0" data-a="start">${L('空白训练', 'Empty workout')}</button><button class="btn big" style="margin-top:0" data-a="cardio">${L('只练有氧', 'Cardio only')}</button></div>`;
+    } else {
+      h += `<button class="btn pri big" data-a="start">${L('开始训练', 'Start workout')}</button><button class="btn big" data-a="cardio">${L('只练有氧', 'Cardio only')}</button>`;
     }
-    h += `<div class="row2" style="margin-top:10px"><button class="btn big" style="margin-top:0" data-a="start">${L('空白训练', 'Empty workout')}</button><button class="btn big" style="margin-top:0" data-a="cardio">${L('只练有氧', 'Cardio only')}</button></div>`;
     const last = S.workouts[0];
-    if (resumable(last)) h = `<div class="tip"><b>${last.auto ? L(`今天这次训练在 ${clockOf(last.end)} 自动结束了`, `Today’s workout auto-finished at ${clockOf(last.end)}`) : L('今天已经练过一次', 'You already trained today')}</b><div class="sub" style="margin:4px 0 8px">${L('还在练、或者漏记了几组？回到这次训练接着记，不会多出一条记录。', 'Still going, or forgot a few sets? Pick it back up. No duplicate entry.')}</div><button class="btn pri" data-a="resume" data-id="${last.id}">${L('继续这次训练', 'Resume this workout')}</button></div>` + h;
+    if (resumable(last)) h = `<div class="tip"><b>${last.auto ? L(`今天这次训练在 ${clockOf(last.end)} 自动结束了`, `Today’s workout auto-finished at ${clockOf(last.end)}`) : L('今天已经练过一次', 'You already trained today')}</b><div class="sub" style="margin:4px 0 8px">${L('还在练、或者漏记了几组？回到这次训练接着记，不会多出一条记录。', 'Still going, or forgot a few sets? Pick it back up. No duplicate entry.')}</div><button class="btn pri" data-a="resume" data-id="${last.id}">${L('继续这次训练', 'Resume this workout')}</button></div>` + h.replace('btn pri big', 'btn big');
     h += gapHTML();
     if (last) { const st = stats(last); h += `<h2>${L('上次训练', 'Last workout')}</h2><button class="li" data-a="hOpen" data-id="${last.id}"><div><div class="t">${fmtDT(last.start)}</div><div class="sub">${esc(wNames(last))}</div><div class="sub">${wSum(last)}</div></div><span class="sub">›</span></button>`; }
     m.innerHTML = h; $('#hdr').textContent = ''; return;
@@ -466,7 +448,7 @@ function rTrain() {
   const preTip = w.pre && !hasDone ? `<div class="tip"><b>${L('练前开机', 'Warm-up primer')}</b><div class="sub" style="margin-top:4px">${esc(w.pre)}</div></div>` : '';
   m.innerHTML = preTip + editorHTML(w, 'a') + cardioHTML(w, 'a') +
     `<div class="row2"><button class="btn big" data-a="addEx" data-m="a">${L('＋ 添加动作', '＋ Add exercise')}</button><button class="btn big" data-a="cardio" data-m="a">${L('＋ 有氧', '＋ Cardio')}</button></div>
-     <div class="row2" style="margin-top:10px"><button class="btn danger" data-a="restPick">${L(`休息 ${S.settings.rest} 秒 ▾`, `Rest ${S.settings.rest}s ▾`)}</button><button class="btn pri" data-a="finish">${L('结束训练', 'Finish')}</button></div>`;
+     <div class="row2" style="margin-top:10px"><button class="btn" data-a="restPick">${L(`休息 ${S.settings.rest} 秒 ▾`, `Rest ${S.settings.rest}s ▾`)}</button><button class="btn pri" data-a="finish">${L('结束训练', 'Finish')}</button></div>`;
   updElapsed();
 }
 const setsTxt = n => L(`${n} 组`, `${n} set${n === 1 ? '' : 's'}`);
@@ -477,36 +459,48 @@ function updElapsed() {
   h.textContent = idle > 10 * 60000 && !resting ? L(`已停 ${fmtAgo(idle)}`, `Idle ${fmtAgo(idle)}`) : L('已训练 ', 'Elapsed ') + fmtClock(Date.now() - S.active.start);
 }
 
+let openCards = new Set(); // 训练中手动展开查看的“已全部完成”动作卡片
 function editorHTML(w, m) {
   if (!w.exercises.length) return (w.cardio && w.cardio.length) ? '' : `<div class="tip" data-m="${m}">${L('还没有动作，点「＋ 添加动作」开始。', 'No exercises yet. Tap “＋ Add exercise” to begin.')}</div>`;
   const prs = prMap(w);
   return w.exercises.map((e, ei) => {
     const ex = exById(e.exId), lp = lastPerf(e.exId, m === 'e' ? w.start : 0, w.id);
     const cur = m === 'a' ? e.sets.findIndex(s => !s.done) : -1, labs = setLabels(e.sets);
+    const allDone = m === 'a' && e.sets.length > 0 && cur < 0;
+    const ssTop = !!(e.ss && ei < w.exercises.length - 1), ssBot = !!(ei > 0 && w.exercises[ei - 1].ss);
+    // 全部组都打完勾后，整张卡片自动折叠成一行，点一下随时展开
+    if (allDone && !openCards.has(ei)) {
+      const work = e.sets.filter(s => !s.warm), show = work.length ? work : e.sets;
+      const sum = show.map(s => fmtSet(ex, s)).join(L('，', ', '));
+      return `<button class="card done-card" data-m="${m}" data-ei="${ei}" data-a="toggleCard"><div class="done-card-main"><span class="done-chk">✓</span><b>${esc(exName(ex))}</b><span class="sub">${setsTxt(show.length)} · ${esc(sum)}</span></div><span class="sub" style="flex-shrink:0">${L('展开', 'Show')}</span></button>`;
+    }
     let k = 0; const prevs = e.sets.map(s => { if (s.warm) return ''; const p = lp && lp.sets[k++]; return p ? fmtSet(ex, p) : ''; });
     const note = e.note || ex.note || '';
-    const ssTop = !!(e.ss && ei < w.exercises.length - 1), ssBot = !!(ei > 0 && w.exercises[ei - 1].ss);
     return `<div class="card${ssTop ? ' ss-top' : ''}${ssBot ? ' ss-bot' : ''}" data-m="${m}" data-ei="${ei}">
       <div class="exh"><div><div class="exn">${esc(exName(ex))}${ex.bw ? ` <span class="tag">${BWT}</span>` : ''}${ex.timed ? ` <span class="tag">${L('计时', 'Timed')}</span>` : ''}</div>
       ${note ? `<div class="exnote">${esc(note)}</div>` : ''}
       <div class="sub">${lp ? L('上次 ', 'Last ') + fmtMD(lp.date) + L('：', ': ') + esc(lp.sets.map(s => fmtSet(ex, s)).join(L('，', ', '))) : L('暂无历史记录', 'No history yet')}</div></div>
-      <div class="exb"><button class="btn" data-a="exMenu" aria-label="${L('动作操作', 'Exercise options')}">⋯</button></div></div>
-      ${e.sets.map((s, si) => setHTML(ex, s, si, si === cur, `${m}-${ei}-${si}`, labs[si], prevs[si], prs.has(s))).join('')}
+      <div class="exb">${allDone ? `<button class="btn ghost" data-a="toggleCard">${L('收起', 'Hide')}</button>` : ''}<button class="btn" data-a="exMenu" aria-label="${L('动作操作', 'Exercise options')}">⋯</button></div></div>
+      ${e.sets.map((s, si) => setHTML(ex, s, si, si === cur, `${m}-${ei}-${si}`, labs[si], prevs[si], prs.has(s), m)).join('')}
       <button class="btn addset" data-a="addSet">${L('＋ 添加一组', '＋ Add set')}</button></div>${ssTop ? `<div class="ss-link">↔ ${L('超级组 · 交替完成', 'Superset · alternate sets')}</div>` : ''}`;
   }).join('');
 }
 // 热身组不占正式组号：热身、热身、第 1 组、第 2 组…
 const WARM = L('热身', 'Warm-up');
 const setLabels = sets => { let k = 0; return sets.map(s => { if (s.warm) return WARM; k++; return L(`第 ${k} 组`, `Set ${k}`); }); };
-let openSet = null; // 当前展开修改的已完成组
-function setHTML(ex, s, si, cur, key, lab, prev, pr) {
+let openSet = null; // 当前手动展开的组（已完成或待做组）
+function setHTML(ex, s, si, cur, key, lab, prev, pr, m) {
   const rd = ex.timed ? 5 : 1, trophy = pr ? ' 🏆' : '', SEC = L('秒', 's');
+  const wt = ex.bw ? fmtW(ex, s.w) + (s.w > 0 ? ' kg' : '') : num(s.w) + ' kg';
+  // 已完成的组折叠成一行；训练中排在后面的待做组也默认折叠成一行，屏幕焦点只留在当前组
   if (s.done && openSet !== key) {
-    const wt = ex.bw ? fmtW(ex, s.w) + (s.w > 0 ? ' kg' : '') : num(s.w) + ' kg';
     return `<div class="set mini ${s.warm ? 'warm' : ''}" data-si="${si}"><button class="mini-main" data-a="openSet">${lab}<b>${wt} × ${s.est ? L('约', '~') : ''}${s.r} ${ex.timed ? SEC : L('次', 'reps')}${trophy}</b></button><button class="btn mini-ok" data-a="done" aria-label="${L('取消完成', 'Mark not done')}">✓</button></div>`;
   }
+  if (m === 'a' && !s.done && !cur && openSet !== key) {
+    return `<div class="set mini todo ${s.warm ? 'warm' : ''}" data-si="${si}"><button class="mini-main" data-a="openSet">${lab}<b>${wt} × ${s.r} ${ex.timed ? SEC : L('次', 'reps')}</b>${prev ? `<span class="prev">${L('上次', 'last')} ${esc(prev)}</span>` : ''}</button><span class="mini-tag">${L('待做', 'Next')}</span></div>`;
+  }
   return `<div class="set ${s.done ? 'done' : ''} ${cur ? 'cur' : ''} ${s.warm ? 'warm' : ''}" data-si="${si}">
-    <div class="sethead"><span>${lab}${ex.bw && !s.w ? ' · ' + BWT : ''}${cur ? L(' · 进行中', ' · now') : ''}${trophy}${prev ? `<span class="prev">${L('上次', 'last')} ${esc(prev)}</span>` : ''}</span><span>${s.done ? `<button class="btn ghost" data-a="openSet">${L('收起', 'Collapse')}</button>` : ''}<button class="btn ghost warmbtn" data-a="warm">${s.warm ? L('改为正式组', 'Working set') : L('标为热身', 'Warm-up')}</button><button class="btn ghost" data-a="delSet">${L('删除', 'Delete')}</button></span></div>
+    <div class="sethead"><span>${lab}${ex.bw && !s.w ? ' · ' + BWT : ''}${cur ? L(' · 进行中', ' · now') : ''}${trophy}${prev ? `<span class="prev">${L('上次', 'last')} ${esc(prev)}</span>` : ''}</span><span>${(s.done || (m === 'a' && !cur)) ? `<button class="btn ghost" data-a="openSet">${L('收起', 'Collapse')}</button>` : ''}<button class="btn ghost warmbtn" data-a="warm">${s.warm ? L('改为正式组', 'Working set') : L('标为热身', 'Warm-up')}</button><button class="btn ghost" data-a="delSet">${L('删除', 'Delete')}</button></span></div>
     <div class="stp"><label>${ex.bw ? L('负重', '+kg') : L('重量', 'kg')}</label><button class="btn" data-a="step" data-f="w" data-d="-2.5">−2.5</button><input data-f="w" inputmode="decimal" autocomplete="off" value="${num(s.w)}" aria-label="${L('重量', 'Weight')}"><button class="btn" data-a="step" data-f="w" data-d="2.5">+2.5</button><span class="unit">kg</span></div>
     <div class="stp"><label>${ex.timed ? L('秒数', 'Sec') : L('次数', 'Reps')}</label><button class="btn" data-a="step" data-f="r" data-d="-${rd}">−${rd}</button><input data-f="r" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${s.r}" aria-label="${L('次数', 'Reps')}"><button class="btn" data-a="step" data-f="r" data-d="${rd}">+${rd}</button><span class="unit">${ex.timed ? SEC : L('次', '×')}</span></div>
     <button class="btn chk" data-a="done">${s.done ? L('✓ 已完成', '✓ Done') : L('完成 ✓', 'Done ✓')}</button>
@@ -580,12 +574,12 @@ A.repeatW = b => {
   toast(L('已带出上次动作，开练！', 'Workout loaded. Let’s go!'));
 };
 A.tplManage = () => {
-  const ov = sheet(L('管理模板', 'Manage templates'), `<button class="btn" data-x="reset">${L('恢复默认 A/B', 'Reset A/B')}</button>`);
+  const ov = sheet(L('管理模板', 'Manage templates'));
   const draw = () => {
     const tpls = S.templates || [];
-    ov.body.innerHTML = `<div class="sub" style="margin:4px 2px 10px">${L('也可以在「历史」里点开任意一次训练，选择「存为模板」。', 'You can also open any workout in History and tap “Save as template”.')}</div>` +
+    ov.body.innerHTML = `<div class="sub" style="margin:4px 2px 10px">${L('在「历史」里点开任意一次训练，选择「存为模板」即可添加。', 'Open any workout in History and tap “Save as template” to add one.')}</div>` +
       (tpls.length ? tpls.map((t, i) => `<div class="li"><div><div class="t">${esc(t.name)}</div><div class="sub">${esc(t.items.map(it => exName(resolveTplEx(it.exId)) + '×' + (it.sets || 1)).join(' · '))}</div></div><button class="btn danger" data-del="${i}">${L('删除', 'Delete')}</button></div>`).join('')
-        : `<div class="tip">${L('暂无模板，可点右上角恢复默认 A/B 上下肢模板。', 'No templates yet. Tap Reset A/B above to restore defaults.')}</div>`);
+        : `<div class="tip">${L('暂无模板。', 'No templates yet.')}</div>`);
   };
   ov.addEventListener('click', async e => {
     const del = e.target.closest('[data-del]');
@@ -594,16 +588,11 @@ A.tplManage = () => {
       if (await confirmDanger(L('删除模板', 'Delete template'), L(`删除「${t.name}」？`, `Delete “${t.name}”?`))) {
         tx(() => { S.templates.splice(i, 1); }); draw(); render();
       }
-      return;
-    }
-    if (e.target.closest('[data-x="reset"]')) {
-      if (await confirmDanger(L('恢复默认 A/B 模板', 'Reset default A/B'), L('将恢复内置的 A 日（纯上肢）和 B 日（下肢+核心）模板，已有的训练记录不受影响。', 'Restores the default Upper/Lower A & B templates. Your workout history is untouched.'), L('恢复', 'Reset'))) {
-        tx(() => { S.templates = defTemplates(); }); draw(); render(); toast(L('已恢复默认 A/B 模板', 'Default A/B templates restored'));
-      }
     }
   });
   draw();
 };
+A.toggleCard = b => { const c = ctx(b); if (openCards.has(c.ei)) openCards.delete(c.ei); else openCards.add(c.ei); commit(c.m, b); };
 /* ========== 忘记结束训练：很久没操作就自动结束 ==========
    超过设定时长（默认 10 分钟）没有任何操作，下次看到这个页面时直接结束这次训练：
    结束时间按最后一组点“完成”的时间算，没点完成的组不保存；弹窗里可以一键撤销。 */
@@ -717,6 +706,7 @@ A.openSet = b => { const c = ctx(b), k = `${c.m}-${c.ei}-${c.si}`; openSet = ope
 A.warm = b => { const c = ctx(b); if (c.s.warm) delete c.s.warm; else c.s.warm = true; commit(c.m, b); };
 // 超级组完成流转：动作①做完直接跳动作②（不乱开休息计时），动作②做完才开休息并跳回动作①下一组
 function afterSetDone(c) {
+  openCards.delete(c.ei);
   const exs = S.active && S.active.exercises; if (!exs) return;
   const nextE = c.e.ss ? exs[c.ei + 1] : null;
   if (nextE && nextE.sets.some(s => !s.done)) {
